@@ -1,0 +1,65 @@
+# LPFM station configuration
+# All tunable parameters live here. No defaults are buried in code.
+
+[stream]
+url = ""                 # overridden by LPFM_STREAM_URL in .env
+buffer_seconds = 5
+retry_limit = 5
+retry_delay_seconds = 10
+
+[broadcast]
+windows = [
+    { start = "06:00", end = "22:00" }
+]
+
+[relay]
+url = ""                    # overridden by LPFM_RELAY_URL in .env
+on_path = ""                # overridden by LPFM_RELAY_ON_PATH in .env
+off_path = ""               # overridden by LPFM_RELAY_OFF_PATH in .env
+status_path = ""            # overridden by LPFM_RELAY_STATUS_PATH in .env
+verify_retries = 5          # number of state-check retries after a command
+verify_delay_seconds = 1    # seconds between retries
+
+[audio]
+format = ""                 # overridden by LPFM_AUDIO_FORMAT in .env ("alsa" on Pi, "audiotoolbox" on macOS)
+device = ""                 # overridden by LPFM_AUDIO_DEVICE in .env ("hw:1,0" on Pi, "default" on macOS)
+
+[scheduler]
+decision_time = "08:00"              # time of day to make the daily broadcast decision
+window_start = "19:00"               # earliest the broadcast may begin
+window_end = "06:00"                 # latest the broadcast may end (crosses midnight)
+start_leeway_max_minutes = 240       # max offset from window_start for random start pick
+stop_leeway_max_minutes = 240        # max offset back from window_end for random stop pick
+state_file = "state/scheduler.json"  # persisted risk and decision state
+
+[risk]
+decay_factor = 0.5          # how quickly past risk fades (0–1; ~3 days to near-zero)
+broadcast_threshold = 0.85  # accumulated risk above this = no broadcast (0 to disable)
+weight_start = 1.0          # relative weight of start-time risk (normalized at runtime)
+weight_stop = 0.8           # relative weight of stop-time risk
+weight_duration = 0.8       # relative weight of broadcast duration risk
+weight_day = 0.5            # relative weight of day-of-week risk
+
+[risk.day_weights]
+monday    = 1.0
+tuesday   = 0.8
+wednesday = 0.6
+thursday  = 0.4
+friday    = 0.2
+saturday  = 0.0
+sunday    = 0.0
+
+[notifications]
+enabled = true
+
+[watchdog]
+poll_interval_seconds = 10      # how often to check stream health
+restart_attempts = 5            # consecutive failures before declaring stream dead
+restart_cooldown_seconds = 30   # wait between restart attempts
+
+[fallback]
+audio_dir = "content/fallback"
+file_extensions = ["mp3", "wav", "flac", "ogg", "aiff"]
+
+[logging]
+level = "INFO"

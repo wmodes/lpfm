@@ -1,0 +1,28 @@
+# Environment and secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+
+# Station content (audio files not tracked in repo)
+content/
+
+# Runtime state
+state/
+
+# VS Code workspace file (machine-specific)
+*.code-workspace
+
+# macOS
+.DS_Store

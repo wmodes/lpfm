@@ -1,0 +1,42 @@
+# LPFM station environment configuration
+# Copy this file to .env in the project root and fill in values for your environment.
+# .env is gitignored — never commit it.
+#
+# These are machine-specific or sensitive values that should not live in config.toml.
+# All other settings (schedule, buffer sizes, retry limits, etc.) are in config/config.toml.
+
+# ── Stream ────────────────────────────────────────────────────────────────────
+
+# URL of the Icecast/Shoutcast audio stream to broadcast
+LPFM_STREAM_URL=https://usa14.fastcast4u.com/proxy/wmodes?mp=/1
+
+# ── Audio output ──────────────────────────────────────────────────────────────
+
+# ffmpeg output format
+#   Raspberry Pi:  alsa
+#   macOS dev:     audiotoolbox
+LPFM_AUDIO_FORMAT=audiotoolbox
+
+# Audio output device name passed to ffmpeg
+#   Raspberry Pi:  hw:1,0  (USB dongle; verify with: aplay -l)
+#   macOS dev:     default
+LPFM_AUDIO_DEVICE=default
+
+# ── Relay ─────────────────────────────────────────────────────────────────────
+
+# Base URL of the wifi power relay (no trailing slash)
+LPFM_RELAY_URL=http://192.168.1.100
+
+# HTTP paths for the Shelly 1 Mini Gen4 RPC API
+LPFM_RELAY_ON_PATH=/rpc/Switch.Set?id=0&on=true
+LPFM_RELAY_OFF_PATH=/rpc/Switch.Set?id=0&on=false
+LPFM_RELAY_STATUS_PATH=/rpc/Switch.GetStatus?id=0
+
+# ── Email notifications ───────────────────────────────────────────────────────
+
+# SMTP server for sending broadcast schedule notifications
+LPFM_SMTP_HOST=smtp.gmail.com
+LPFM_SMTP_PORT=587
+LPFM_SMTP_USER=your@gmail.com
+LPFM_SMTP_PASSWORD=xxxx xxxx xxxx xxxx    # Gmail app password (myaccount.google.com/apppasswords)
+LPFM_NOTIFY_EMAIL=your@gmail.com          # address to receive notifications
