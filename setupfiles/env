@@ -18,9 +18,12 @@ LPFM_STREAM_URL=https://usa14.fastcast4u.com/proxy/wmodes?mp=/1
 LPFM_AUDIO_FORMAT=audiotoolbox
 
 # Audio output device name passed to ffmpeg
-#   Raspberry Pi:  hw:1,0  (USB dongle; verify with: aplay -l)
+#   Raspberry Pi:  hw:2,0  (USB dongle; verify with: aplay -l)
 #   macOS dev:     default
 LPFM_AUDIO_DEVICE=default
+
+# Output volume percent for the USB audio device (0–100; ALSA only)
+LPFM_OUTPUT_VOLUME=100
 
 # ── Relay ─────────────────────────────────────────────────────────────────────
 

@@ -250,7 +250,7 @@ class ConfigLoader:
             format=self._env("LPFM_AUDIO_FORMAT", s.get("format", "")),
             device=self._env("LPFM_AUDIO_DEVICE", s.get("device", "")),
             device_name=self._require(s, "device_name", "audio"),
-            output_volume=self._require(s, "output_volume", "audio"),
+            output_volume=int(os.environ.get("LPFM_OUTPUT_VOLUME", None) or self._require(s, "output_volume", "audio")),
         )
 
     def _parse_scheduler(self, raw: dict) -> SchedulerConfig:

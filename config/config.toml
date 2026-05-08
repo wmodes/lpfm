@@ -24,7 +24,7 @@ verify_delay_seconds = 1    # seconds between retries
 format = ""                 # overridden by LPFM_AUDIO_FORMAT in .env ("alsa" on Pi, "audiotoolbox" on macOS)
 device = ""                 # overridden by LPFM_AUDIO_DEVICE in .env ("hw:2,0" on Pi, "default" on macOS)
 device_name = "USB Audio"   # name used to locate the ALSA card in aplay -l
-output_volume = 100         # output volume percent (0–100); applied via amixer on ALSA only
+output_volume = 100         # overridden by LPFM_OUTPUT_VOLUME in .env (0–100; ALSA only)
 
 [scheduler]
 decision_time = "08:00"              # time of day to make the daily broadcast decision
