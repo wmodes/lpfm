@@ -39,7 +39,7 @@ TEMPLATE = """<!DOCTYPE html>
     padding: 7px 10px; border-radius: 3px; font-family: monospace; font-size: 0.95em;
   }
   input[type=text] { width: 100%; }
-  .row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-top: 14px; }
+  .row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-top: 14px; }
   .field { display: flex; flex-direction: column; }
   .field-grow { flex: 1; min-width: 200px; }
   .btn { padding: 7px 18px; border: none; border-radius: 3px; cursor: pointer; font-family: monospace; font-size: 0.95em; }
