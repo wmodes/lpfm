@@ -4,6 +4,7 @@ import logging
 import signal
 import sys
 
+from lpfm.audio_router import AudioRouter
 from lpfm.config_loader import ConfigLoader, ConfigError
 from lpfm.fallback_player import FallbackPlayer
 from lpfm.notifier import Notifier
@@ -30,6 +31,9 @@ def main() -> None:
     setup_logging(config.logging.level)
     logger = logging.getLogger(__name__)
     logger.info("LPFM station starting")
+
+    # Configure audio device before starting stream
+    AudioRouter(config.audio).configure()
 
     # Build components in dependency order
     notifier = Notifier(config.notifications)

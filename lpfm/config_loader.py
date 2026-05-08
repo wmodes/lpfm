@@ -100,8 +100,10 @@ class WatchdogConfig:
 @dataclass
 class AudioConfig:
     """Audio output device and format configuration."""
-    format: str    # ffmpeg output format: "alsa" on Pi, "audiotoolbox" on macOS
-    device: str    # output device name passed to ffmpeg
+    format: str         # ffmpeg output format: "alsa" on Pi, "audiotoolbox" on macOS
+    device: str         # output device name passed to ffmpeg
+    device_name: str    # human-readable name used to locate the ALSA card (e.g. "USB Audio")
+    output_volume: int  # output volume percent 0–100; applied via amixer on ALSA only
 
 
 @dataclass
@@ -247,6 +249,8 @@ class ConfigLoader:
         return AudioConfig(
             format=self._env("LPFM_AUDIO_FORMAT", s.get("format", "")),
             device=self._env("LPFM_AUDIO_DEVICE", s.get("device", "")),
+            device_name=self._require(s, "device_name", "audio"),
+            output_volume=self._require(s, "output_volume", "audio"),
         )
 
     def _parse_scheduler(self, raw: dict) -> SchedulerConfig:
