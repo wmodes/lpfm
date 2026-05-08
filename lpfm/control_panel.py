@@ -88,6 +88,7 @@ TEMPLATE = """<!DOCTYPE html>
           <option value="true"  {% if today.get('broadcasting') %}selected{% endif %}>Yes</option>
           <option value="false" {% if not today.get('broadcasting') %}selected{% endif %}>No</option>
         </select>
+        <span style="font-size:0.75em;margin-top:3px">&nbsp;</span>
       </div>
       <div class="field">
         <label>Start</label>
