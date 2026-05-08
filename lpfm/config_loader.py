@@ -120,6 +120,13 @@ class LoggingConfig:
 
 
 @dataclass
+class ControlPanelConfig:
+    """Web-based control panel settings."""
+    port: int
+    history_entries: int
+
+
+@dataclass
 class Config:
     """Top-level config object passed to all station components."""
     stream: StreamConfig
@@ -131,6 +138,7 @@ class Config:
     relay: RelayConfig
     watchdog: WatchdogConfig
     fallback: FallbackConfig
+    control_panel: ControlPanelConfig
     logging: LoggingConfig
 
 
@@ -170,6 +178,7 @@ class ConfigLoader:
             relay=self._parse_relay(raw),
             watchdog=self._parse_watchdog(raw),
             fallback=self._parse_fallback(raw),
+            control_panel=self._parse_control_panel(raw),
             logging=self._parse_logging(raw),
         )
 
@@ -304,6 +313,13 @@ class ConfigLoader:
         return FallbackConfig(
             audio_dir=self._require(s, "audio_dir", "fallback"),
             file_extensions=self._require(s, "file_extensions", "fallback"),
+        )
+
+    def _parse_control_panel(self, raw: dict) -> ControlPanelConfig:
+        s = self._require_section(raw, "control_panel")
+        return ControlPanelConfig(
+            port=self._require(s, "port", "control_panel"),
+            history_entries=self._require(s, "history_entries", "control_panel"),
         )
 
     def _parse_logging(self, raw: dict) -> LoggingConfig:

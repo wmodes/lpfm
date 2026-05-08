@@ -63,5 +63,9 @@ restart_cooldown_seconds = 30   # wait between restart attempts
 audio_dir = "content/fallback"
 file_extensions = ["mp3", "wav", "flac", "ogg", "aiff"]
 
+[control_panel]
+port = 8080
+history_entries = 5
+
 [logging]
 level = "INFO"

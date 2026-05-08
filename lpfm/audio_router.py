@@ -9,6 +9,7 @@ on other platforms so macOS dev works unchanged.
 import logging
 import re
 import subprocess
+from typing import Optional
 
 from lpfm.config_loader import AudioConfig
 
@@ -42,7 +43,7 @@ class AudioRouter:
 
         self._set_volume(card, self._config.output_volume)
 
-    def _find_alsa_card(self) -> int | None:
+    def _find_alsa_card(self) -> Optional[int]:
         """Search aplay -l output for a card whose name contains device_name.
 
         Returns:

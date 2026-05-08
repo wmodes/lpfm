@@ -40,6 +40,7 @@ class StreamFetcher:
         self._audio_config = audio_config
         self._process = None
         self._stderr_thread = None
+        self._url_override = None
         self._logger = logging.getLogger(__name__)
 
     def start(self) -> None:
@@ -59,7 +60,8 @@ class StreamFetcher:
             )
 
         cmd = self._build_command()
-        self._logger.info(f"Starting stream: {self._stream_config.url}")
+        url = self._url_override or self._stream_config.url
+        self._logger.info(f"Starting stream: {url}")
         self._logger.debug(f"ffmpeg command: {' '.join(cmd)}")
 
         try:
@@ -110,6 +112,27 @@ class StreamFetcher:
         self.stop()
         self.start()
 
+    def set_url(self, url: str) -> None:
+        """Restart the stream with a one-time URL override.
+
+        Args:
+            url: Stream URL to use for this broadcast session.
+        """
+        self._logger.info(f"Stream URL override: {url}")
+        self._url_override = url
+        if self.is_running():
+            self.stop()
+            self.start()
+
+    def reset_url(self) -> None:
+        """Clear any URL override and restart with the configured default."""
+        if self._url_override is not None:
+            self._logger.info("Clearing stream URL override — reverting to default")
+            self._url_override = None
+            if self.is_running():
+                self.stop()
+                self.start()
+
     def _build_command(self) -> list:
         """Construct the ffmpeg command from current config."""
         return [
@@ -118,7 +141,7 @@ class StreamFetcher:
             "-reconnect", "1",             # reconnect on disconnect
             "-reconnect_streamed", "1",    # reconnect on streamed sources
             "-reconnect_delay_max", str(self._stream_config.retry_delay_seconds),
-            "-i", self._stream_config.url,
+            "-i", self._url_override or self._stream_config.url,
             "-vn",                         # discard any video stream
             "-acodec", "pcm_s16le",        # decode to raw 16-bit PCM for ALSA
             "-ar", "44100",                # sample rate

@@ -6,6 +6,7 @@ import sys
 
 from lpfm.audio_router import AudioRouter
 from lpfm.config_loader import ConfigLoader, ConfigError
+from lpfm.control_panel import ControlPanel
 from lpfm.fallback_player import FallbackPlayer
 from lpfm.notifier import Notifier
 from lpfm.relay_controller import RelayController
@@ -42,6 +43,7 @@ def main() -> None:
     stream = StreamFetcher(config.stream, config.audio)
     scheduler = Scheduler(config.scheduler, config.risk, relay, stream, notifier)
     watchdog = Watchdog(config.watchdog, stream, relay, fallback, scheduler)
+    control_panel = ControlPanel(config.control_panel, config.scheduler, config.stream, scheduler)
 
     def shutdown(signum, frame):
         logger.info("Shutdown signal received — stopping station")
@@ -58,6 +60,7 @@ def main() -> None:
     stream.start()
     scheduler.start()
     watchdog.start()
+    control_panel.start()
 
     logger.info("LPFM station running")
     signal.pause()

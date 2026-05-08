@@ -29,14 +29,15 @@ main.py
 ├── Scheduler         daily probabilistic broadcast decision + timing
 ├── Watchdog          stream health monitor + recovery coordinator
 ├── FallbackPlayer    plays local audio when stream is unavailable
-└── Notifier          sends email alerts at decision time
+├── Notifier          sends email alerts at decision time
+└── ControlPanel      web dashboard for monitoring and manual control
 ```
 
 All components run as background threads inside a single Python process, managed by systemd on the Pi.
 
 ### Components
 
-**StreamFetcher** — Spawns an ffmpeg subprocess that pulls the Icecast stream and routes audio to the configured output device (ALSA on Pi, audiotoolbox on macOS). Stderr is drained in a daemon thread to prevent pipe buffer stalls. Supports reconnect on stream drop.
+**StreamFetcher** — Spawns an ffmpeg subprocess that pulls the Icecast stream and routes audio to the configured output device (ALSA on Pi, audiotoolbox on macOS). Stderr is drained in a daemon thread to prevent pipe buffer stalls. Supports reconnect on stream drop and one-time stream URL overrides.
 
 **RelayController** — Sends HTTP commands to a Shelly 1 Mini Gen4 relay via its RPC API (`/rpc/Switch.Set`). Verifies state after each command with configurable retries before declaring success or failure.
 
@@ -47,6 +48,8 @@ All components run as background threads inside a single Python process, managed
 **FallbackPlayer** — Scans a local audio directory and plays files in shuffled order via ffmpeg, cycling indefinitely until stopped.
 
 **Notifier** — Sends plain-text email via Gmail SMTP at decision time: broadcast schedule and risk metrics if on air, or a dark-tonight notice if not.
+
+**ControlPanel** — Flask web dashboard running on port 8080. Shows broadcast history, accumulated risk, and tonight's schedule. Allows editing tonight's decision and times, overriding the stream URL for a single broadcast, and triggering an emergency shutoff.
 
 ---
 

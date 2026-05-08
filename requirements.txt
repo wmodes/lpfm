@@ -2,3 +2,4 @@
 tomli>=2.0           # TOML config parser (backport of Python 3.11 tomllib)
 python-dotenv>=1.0   # loads .env into os.environ at startup
 requests>=2.31       # HTTP client for relay control commands
+flask>=3.0           # web control panel

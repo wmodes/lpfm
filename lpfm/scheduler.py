@@ -64,6 +64,7 @@ class Scheduler:
         self._logger = logging.getLogger(__name__)
 
         self._stop_event = threading.Event()
+        self._wake_event = threading.Event()
         self._schedule_thread = None
         self._is_transmitting = False
 
@@ -87,7 +88,12 @@ class Scheduler:
             return
         self._logger.info("Scheduler stopping")
         self._stop_event.set()
+        self._wake_event.set()  # unblock any pending wait
         self._schedule_thread.join(timeout=10)
+
+    def wake(self) -> None:
+        """Wake the scheduler immediately to re-process state."""
+        self._wake_event.set()
 
     def is_in_broadcast_window(self) -> bool:
         """Return True if the current time falls within the decided broadcast window.
@@ -112,7 +118,8 @@ class Scheduler:
             # Clamp to at least 1 second to avoid tight loops on clock edge cases
             sleep_seconds = max(sleep_seconds, 1)
             self._logger.debug(f"Scheduler sleeping {sleep_seconds:.0f}s until next event")
-            self._stop_event.wait(timeout=sleep_seconds)
+            self._wake_event.wait(timeout=sleep_seconds)
+            self._wake_event.clear()
 
     def _process_schedule(self) -> float:
         """Assess current schedule state and return seconds until the next event.
@@ -128,6 +135,13 @@ class Scheduler:
         now = datetime.now()
         state = self._load_state()
         today_state = state.get("today", {})
+
+        # ── Emergency shutoff overrides all scheduling ─────────────────────────
+        if state.get("emergency_shutoff"):
+            if self._is_transmitting:
+                self._deactivate_transmitter()
+            self._logger.warning("Emergency shutoff active — transmission suspended")
+            return 60
 
         # ── No prior decision in state (first ever run) ───────────────────────
         if not today_state.get("decided"):
@@ -258,13 +272,22 @@ class Scheduler:
     # ── Transmitter control ───────────────────────────────────────────────────
 
     def _activate_transmitter(self) -> None:
-        """Turn the relay on if the stream is healthy."""
+        """Turn the relay on if the stream is healthy.
+
+        Applies a one-time stream URL override if one is set in today's state.
+        """
         if not self._stream_fetcher.is_running():
             self._logger.warning(
                 "Broadcast window start reached but stream is not running — "
                 "holding off on transmitter until stream recovers"
             )
             return
+
+        # Apply one-time stream URL override if configured for tonight
+        override_url = self._load_state().get("today", {}).get("stream_url_override")
+        if override_url:
+            self._stream_fetcher.set_url(override_url)
+
         self._logger.info("Broadcast window start: activating transmitter")
         try:
             self._relay_controller.turn_on()
@@ -278,6 +301,7 @@ class Scheduler:
         try:
             self._relay_controller.turn_off()
             self._is_transmitting = False
+            self._stream_fetcher.reset_url()  # revert to default stream after broadcast
         except RelayError as e:
             self._logger.error(f"Failed to deactivate transmitter at window end: {e}")
 
