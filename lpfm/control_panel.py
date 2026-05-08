@@ -106,18 +106,40 @@ TEMPLATE = """<!DOCTYPE html>
 
   <div class="separator"></div>
 
-  <form method="post" action="/api/stream">
+  <form method="post" action="/api/stream" onsubmit="return validateStreamUrl(this)">
     <div class="row">
       <div class="field field-grow">
         <label>Stream URL (tonight only — resets after broadcast)</label>
-        <input type="text" name="url" value="{{ today.get('stream_url_override', default_stream) }}">
+        <input type="text" name="url" id="stream-url" value="{{ today.get('stream_url_override', default_stream) }}">
+        <span style="color:#555;font-size:0.75em;margin-top:4px">
+          HTTP/HTTPS direct stream only (Icecast, SHOUTcast) — not .m3u/.pls playlists
+        </span>
       </div>
       <div class="field">
         <label>&nbsp;</label>
         <button type="submit" class="btn btn-save">Set Stream</button>
       </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button type="button" class="btn" style="background:#222;color:#888;border:1px solid #444"
+                onclick="document.getElementById('stream-url').value='{{ default_stream }}'"
+                title="Restore default stream URL">Reset</button>
+      </div>
     </div>
   </form>
+<script>
+function validateStreamUrl(form) {
+  var url = form.url.value.trim();
+  if (!url.match(/^https?:\/\//i)) {
+    alert('URL must start with http:// or https://');
+    return false;
+  }
+  if (url.match(/\.(m3u|pls|xspf)(\?.*)?$/i)) {
+    return confirm('This looks like a playlist file, not a direct stream — ffmpeg may not handle it correctly. Continue anyway?');
+  }
+  return true;
+}
+</script>
 </div>
 
 <!-- Risk -->
@@ -180,6 +202,7 @@ class ControlPanel:
         scheduler_config: Used to locate the state file.
         stream_config: Provides the default stream URL for the UI.
         scheduler: Called to wake the scheduling thread after state changes.
+        stream: Called to switch the live stream URL immediately.
     """
 
     def __init__(
@@ -188,11 +211,13 @@ class ControlPanel:
         scheduler_config: SchedulerConfig,
         stream_config: StreamConfig,
         scheduler,
+        stream,
     ):
         self._config = control_panel_config
         self._scheduler_config = scheduler_config
         self._stream_config = stream_config
         self._scheduler = scheduler
+        self._stream = stream
         self._logger = logging.getLogger(__name__)
         self._app = Flask(__name__)
         self._app.logger.setLevel(logging.ERROR)  # suppress Flask request logs
@@ -251,8 +276,10 @@ class ControlPanel:
             today = state.get("today", {})
             if url and url != self._stream_config.url:
                 today["stream_url_override"] = url
+                self._stream.set_url(url)
             else:
                 today.pop("stream_url_override", None)
+                self._stream.reset_url()
             state["today"] = today
             self._write_state(state)
             return redirect("/")
