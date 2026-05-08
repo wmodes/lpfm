@@ -65,21 +65,34 @@ class AudioRouter:
         return None
 
     def _set_volume(self, card: int, volume: int) -> None:
-        """Set the Speaker mixer control to the given volume on the specified card.
+        """Set output volume on the given ALSA card.
+
+        Tries each known mixer control name in order, stopping at the first
+        that succeeds. Different devices expose different control names
+        (e.g. USB dongles use 'Speaker'; the Pi headphone jack uses 'PCM Playback Volume').
 
         Args:
             card: ALSA card number.
             volume: Volume percent 0–100.
         """
-        try:
-            subprocess.run(
-                ["amixer", "-c", str(card), "sset", "Speaker", f"{volume}%"],
-                capture_output=True,
-                check=True,
-            )
-            self._logger.info(
-                f"Audio output volume set to {volume}% "
-                f"(card {card}: {self._config.device_name})"
-            )
-        except (OSError, subprocess.SubprocessError) as e:
-            self._logger.error(f"Failed to set audio volume: {e}")
+        controls = ["Speaker", "PCM Playback Volume", "Master"]
+        for control in controls:
+            try:
+                subprocess.run(
+                    ["amixer", "-c", str(card), "sset", control, f"{volume}%"],
+                    capture_output=True,
+                    check=True,
+                )
+                self._logger.info(
+                    f"Audio output volume set to {volume}% "
+                    f"(card {card}: {self._config.device_name}, control: {control})"
+                )
+                return
+            except subprocess.CalledProcessError:
+                continue
+            except OSError as e:
+                self._logger.error(f"Failed to set audio volume: {e}")
+                return
+        self._logger.warning(
+            f"No recognized mixer control found on card {card} — volume not set"
+        )
