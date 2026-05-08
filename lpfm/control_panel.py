@@ -111,9 +111,6 @@ TEMPLATE = """<!DOCTYPE html>
       <div class="field field-grow">
         <label>Stream URL (tonight only — resets after broadcast)</label>
         <input type="text" name="url" id="stream-url" value="{{ today.get('stream_url_override', default_stream) }}">
-        <span style="color:#555;font-size:0.75em;margin-top:4px">
-          HTTP/HTTPS direct stream only (Icecast, SHOUTcast) — not .m3u/.pls playlists
-        </span>
       </div>
       <div class="field">
         <label>&nbsp;</label>
@@ -126,6 +123,9 @@ TEMPLATE = """<!DOCTYPE html>
                 title="Restore default stream URL">Reset</button>
       </div>
     </div>
+    <p style="color:#555;font-size:0.75em;margin-top:6px">
+      HTTP/HTTPS direct stream only (Icecast, SHOUTcast) — not .m3u/.pls playlists
+    </p>
   </form>
 <script>
 function validateStreamUrl(form) {
