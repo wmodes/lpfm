@@ -109,6 +109,10 @@ class Scheduler:
         start_dt, stop_dt = self._parse_broadcast_window(today)
         return start_dt <= now < stop_dt
 
+    def is_emergency_shutoff(self) -> bool:
+        """Return True if the emergency shutoff flag is active."""
+        return bool(self._load_state().get("emergency_shutoff", False))
+
     # ── Schedule loop ─────────────────────────────────────────────────────────
 
     def _schedule_loop(self) -> None:

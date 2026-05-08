@@ -124,9 +124,10 @@ class Watchdog:
         if self._fallback_player:
             self._fallback_player.stop()
 
-        # Only restore the transmitter if we are inside a broadcast window
+        # Only restore the transmitter if inside the broadcast window and shutoff is not active
         in_window = self._scheduler.is_in_broadcast_window() if self._scheduler else True
-        if in_window:
+        shutoff = self._scheduler.is_emergency_shutoff() if self._scheduler else False
+        if in_window and not shutoff:
             try:
                 self._relay_controller.turn_on()
             except RelayError as e:
