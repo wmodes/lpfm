@@ -130,7 +130,7 @@ TEMPLATE = """<!DOCTYPE html>
 <script>
 function validateStreamUrl(form) {
   var url = form.url.value.trim();
-  if (!url.match(/^https?:\/\//i)) {
+  if (!url.match(/^https?:[/][/]/i)) {
     alert('URL must start with http:// or https://');
     return false;
   }
