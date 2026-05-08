@@ -91,11 +91,15 @@ TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="field">
         <label>Start</label>
-        <input type="time" name="start" value="{{ today.get('start', '') }}">
+        <input type="time" name="start" id="start" value="{{ today.get('start', '') }}"
+               oninput="document.getElementById('start-24h').textContent=this.value">
+        <span id="start-24h" style="color:#555;font-size:0.75em;margin-top:3px">{{ today.get('start', '') }}</span>
       </div>
       <div class="field">
         <label>Stop</label>
-        <input type="time" name="stop" value="{{ today.get('stop', '') }}">
+        <input type="time" name="stop" id="stop" value="{{ today.get('stop', '') }}"
+               oninput="document.getElementById('stop-24h').textContent=this.value">
+        <span id="stop-24h" style="color:#555;font-size:0.75em;margin-top:3px">{{ today.get('stop', '') }}</span>
       </div>
       <div class="field">
         <label>&nbsp;</label>
