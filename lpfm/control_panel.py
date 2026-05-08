@@ -88,19 +88,14 @@ TEMPLATE = """<!DOCTYPE html>
           <option value="true"  {% if today.get('broadcasting') %}selected{% endif %}>Yes</option>
           <option value="false" {% if not today.get('broadcasting') %}selected{% endif %}>No</option>
         </select>
-        <span style="font-size:0.75em;margin-top:3px">&nbsp;</span>
       </div>
       <div class="field">
         <label>Start</label>
-        <input type="time" name="start" id="start" value="{{ today.get('start', '') }}"
-               oninput="document.getElementById('start-24h').textContent=this.value">
-        <span id="start-24h" style="color:#555;font-size:0.75em;margin-top:3px">{{ today.get('start', '') }}</span>
+        <input type="time" name="start" value="{{ today.get('start', '') }}">
       </div>
       <div class="field">
         <label>Stop</label>
-        <input type="time" name="stop" id="stop" value="{{ today.get('stop', '') }}"
-               oninput="document.getElementById('stop-24h').textContent=this.value">
-        <span id="stop-24h" style="color:#555;font-size:0.75em;margin-top:3px">{{ today.get('stop', '') }}</span>
+        <input type="time" name="stop" value="{{ today.get('stop', '') }}">
       </div>
       <div class="field">
         <label>&nbsp;</label>
