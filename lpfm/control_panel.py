@@ -71,7 +71,7 @@ TEMPLATE = """<!DOCTYPE html>
   <form method="post" action="/api/shutoff"
         onsubmit="return confirm('{% if shutoff %}Restore transmission?{% else %}Emergency shutoff — are you sure?{% endif %}')">
     <button type="submit" class="btn {% if shutoff %}btn-restore{% else %}btn-shutoff{% endif %}">
-      {% if shutoff %}&#9889; RESTORE TRANSMISSION{% else %}&#9888; EMERGENCY SHUTOFF{% endif %}
+      {% if shutoff %}⚡ RESTORE TRANSMISSION{% else %}⚠ EMERGENCY SHUTOFF{% endif %}
     </button>
   </form>
   {% if shutoff %}<p class="shutoff-banner">Transmission is currently suspended.</p>{% endif %}
@@ -151,7 +151,7 @@ TEMPLATE = """<!DOCTYPE html>
       <td>{{ "%.3f"|format(entry.today.get('risk_score', 0)) }}</td>
       <td>{{ "%.3f"|format(entry.get('accumulated_risk', 0)) }}</td>
       <td class="{{ 'on-air' if entry.today.get('broadcasting') else 'off-air' }}">
-        {{ '&#9679; on air' if entry.today.get('broadcasting') else '&#9675; dark' }}
+        {{ '● on air' if entry.today.get('broadcasting') else '○ dark' }}
       </td>
     </tr>
     {% endfor %}
