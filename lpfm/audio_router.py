@@ -76,7 +76,7 @@ class AudioRouter:
             card: ALSA card number.
             volume: Volume percent 0–100.
         """
-        controls = ["Speaker", "Headphone Playback Volume", "PCM Playback Volume", "Master"]
+        controls = ["Speaker", "Headphone", "PCM Playback Volume", "Master"]
         for control in controls:
             try:
                 subprocess.run(
