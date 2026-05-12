@@ -113,6 +113,21 @@ class Scheduler:
         """Return True if the emergency shutoff flag is active."""
         return bool(self._load_state().get("emergency_shutoff", False))
 
+    @property
+    def is_transmitting(self) -> bool:
+        """Return True if the scheduler believes the transmitter is currently on."""
+        return self._is_transmitting
+
+    def transmitter_on(self) -> None:
+        """Manually activate the transmitter regardless of schedule."""
+        if not self._is_transmitting:
+            self._activate_transmitter()
+
+    def transmitter_off(self) -> None:
+        """Manually deactivate the transmitter regardless of schedule."""
+        if self._is_transmitting:
+            self._deactivate_transmitter()
+
     # ── Schedule loop ─────────────────────────────────────────────────────────
 
     def _schedule_loop(self) -> None:

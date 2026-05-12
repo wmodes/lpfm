@@ -45,11 +45,21 @@ TEMPLATE = """<!DOCTYPE html>
   .btn { padding: 7px 18px; border: none; border-radius: 3px; cursor: pointer; font-family: monospace; font-size: 0.95em; }
   .btn-save { background: #1a5c1a; color: #8f8; }
   .btn-save:hover { background: #256325; }
-  .btn-shutoff { background: #7a0000; color: #faa; font-size: 1.1em; padding: 14px; width: 100%; }
+  .btn-shutoff { background: #7a0000; color: #faa; padding: 7px 18px; }
   .btn-shutoff:hover { background: #990000; }
-  .btn-restore { background: #0a4a0a; color: #8f8; font-size: 1.1em; padding: 14px; width: 100%; }
+  .btn-restore { background: #0a4a0a; color: #8f8; padding: 7px 18px; }
   .btn-restore:hover { background: #0d600d; }
   .shutoff-banner { color: #f66; font-size: 0.85em; margin-top: 10px; }
+  .manual-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  .toggle-wrap { display: flex; align-items: center; gap: 10px; }
+  .toggle-label { color: #888; font-size: 0.85em; }
+  .toggle-state { font-size: 0.85em; min-width: 2.5em; }
+  .toggle-switch { position: relative; display: inline-block; width: 52px; height: 26px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-knob { position: absolute; cursor: pointer; inset: 0; background: #333; border-radius: 26px; transition: 0.25s; }
+  .toggle-knob:before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #666; border-radius: 50%; transition: 0.25s; }
+  input:checked + .toggle-knob { background: #1a5c1a; }
+  input:checked + .toggle-knob:before { transform: translateX(26px); background: #8f8; }
   .risk-bar { background: #2a2a2a; height: 6px; border-radius: 3px; overflow: hidden; margin: 8px 0 4px; }
   .risk-fill { height: 100%; background: linear-gradient(to right, #2a2, #aa2, #a22); transition: width 0.3s; }
   .risk-value { font-size: 1.6em; color: #f90; }
@@ -66,14 +76,29 @@ TEMPLATE = """<!DOCTYPE html>
 
 <h1>LPFM Control Panel</h1>
 
-<!-- Emergency shutoff -->
+<!-- Manual control -->
+<h2>Manual Control</h2>
 <div class="card {% if shutoff %}danger{% endif %}">
-  <form method="post" action="/api/shutoff"
-        onsubmit="return confirm('{% if shutoff %}Restore transmission?{% else %}Emergency shutoff — are you sure?{% endif %}')">
-    <button type="submit" class="btn {% if shutoff %}btn-restore{% else %}btn-shutoff{% endif %}">
-      {% if shutoff %}⚡ RESTORE TRANSMISSION{% else %}⚠ EMERGENCY SHUTOFF{% endif %}
-    </button>
-  </form>
+  <div class="manual-row">
+    <div class="toggle-wrap">
+      <span class="toggle-label">Transmitter</span>
+      <form method="post" action="/api/transmitter">
+        <label class="toggle-switch" title="{% if transmitting %}Turn transmitter off{% else %}Turn transmitter on{% endif %}">
+          <input type="checkbox" onchange="this.form.submit()" {% if transmitting %}checked{% endif %}>
+          <span class="toggle-knob"></span>
+        </label>
+      </form>
+      <span class="toggle-state {% if transmitting %}on-air{% else %}off-air{% endif %}">
+        {% if transmitting %}ON{% else %}OFF{% endif %}
+      </span>
+    </div>
+    <form method="post" action="/api/shutoff"
+          onsubmit="return confirm('{% if shutoff %}Restore transmission?{% else %}Emergency shutoff — are you sure?{% endif %}')">
+      <button type="submit" class="btn {% if shutoff %}btn-restore{% else %}btn-shutoff{% endif %}">
+        {% if shutoff %}⚡ RESTORE{% else %}⚠ EMERGENCY SHUTOFF{% endif %}
+      </button>
+    </form>
+  </div>
   {% if shutoff %}<p class="shutoff-banner">Transmission is currently suspended.</p>{% endif %}
 </div>
 
@@ -252,6 +277,7 @@ class ControlPanel:
                 today=state.get("today", {}),
                 accumulated_risk=state.get("accumulated_risk", 0.0),
                 shutoff=state.get("emergency_shutoff", False),
+                transmitting=self._scheduler.is_transmitting,
                 default_stream=self._stream_config.url,
                 history=history,
                 now=datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -282,6 +308,14 @@ class ControlPanel:
                 self._stream.reset_url()
             state["today"] = today
             self._write_state(state)
+            return redirect("/")
+
+        @app.route("/api/transmitter", methods=["POST"])
+        def toggle_transmitter():
+            if self._scheduler.is_transmitting:
+                self._scheduler.transmitter_off()
+            else:
+                self._scheduler.transmitter_on()
             return redirect("/")
 
         @app.route("/api/shutoff", methods=["POST"])
