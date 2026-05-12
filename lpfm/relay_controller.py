@@ -35,7 +35,7 @@ class RelayController:
     """
 
     # Timeout for all relay HTTP requests (seconds)
-    REQUEST_TIMEOUT = 5
+    REQUEST_TIMEOUT = 2
 
     def __init__(self, relay_config: RelayConfig):
         self._config = relay_config
