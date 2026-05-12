@@ -95,7 +95,7 @@ TEMPLATE = """<!DOCTYPE html>
       <span class="toggle-label">Transmitter</span>
       <form method="post" action="/api/transmitter">
         <label class="toggle-switch" title="{% if transmitting %}Turn transmitter off{% else %}Turn transmitter on{% endif %}">
-          <input type="checkbox" onchange="this.form.submit()" {% if transmitting %}checked{% endif %}>
+          <input type="checkbox" onchange="syncToggleLabel(this); this.form.submit()" {% if transmitting %}checked{% endif %}>
           <span class="toggle-knob"></span>
         </label>
       </form>
@@ -113,6 +113,12 @@ TEMPLATE = """<!DOCTYPE html>
   {% if shutoff %}<p class="shutoff-banner">Transmission is currently suspended.</p>{% endif %}
 </div>
 <script>
+function syncToggleLabel(cb) {
+  var wrap = cb.closest('.toggle-wrap');
+  var state = wrap.querySelector('.toggle-state');
+  state.textContent = cb.checked ? 'ON' : 'OFF';
+  state.className = 'toggle-state ' + (cb.checked ? 'on-air' : 'off-air');
+}
 function updateRelayStatus() {
   fetch('/api/relay-status')
     .then(function(r) { return r.json(); })
