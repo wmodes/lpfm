@@ -113,6 +113,17 @@ TEMPLATE = """<!DOCTYPE html>
   {% if shutoff %}<p class="shutoff-banner">Transmission is currently suspended.</p>{% endif %}
 </div>
 <script>
+function validateSchedule(form) {
+  if (form.broadcasting.value !== 'true') return true;
+  var start = document.getElementById('sched-start');
+  var stop  = document.getElementById('sched-stop');
+  var ok = true;
+  [start, stop].forEach(function(el) {
+    if (!el.value) { el.style.outline = '2px solid #c33'; ok = false; }
+    else { el.style.outline = ''; }
+  });
+  return ok;
+}
 function syncToggleLabel(cb) {
   var wrap = cb.closest('.toggle-wrap');
   var state = wrap.querySelector('.toggle-state');
@@ -139,7 +150,7 @@ setInterval(updateRelayStatus, 120000);
 <!-- Tonight's broadcast -->
 <h2>Tonight's Broadcast</h2>
 <div class="card">
-  <form method="post" action="/api/schedule">
+  <form method="post" action="/api/schedule" onsubmit="return validateSchedule(this)">
     <div class="row">
       <div class="field">
         <label>Broadcasting</label>
@@ -150,11 +161,11 @@ setInterval(updateRelayStatus, 120000);
       </div>
       <div class="field">
         <label>Start</label>
-        <input type="time" name="start" value="{{ today.get('start', '') }}">
+        <input type="time" name="start" id="sched-start" value="{{ today.get('start', '') }}">
       </div>
       <div class="field">
         <label>Stop</label>
-        <input type="time" name="stop" value="{{ today.get('stop', '') }}">
+        <input type="time" name="stop" id="sched-stop" value="{{ today.get('stop', '') }}">
       </div>
       <div class="field">
         <label>&nbsp;</label>
