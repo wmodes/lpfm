@@ -47,19 +47,23 @@ class Notifier:
         if not self._config.enabled:
             return
 
-        subject = (
-            f"LPFM on air tonight: "
-            f"{start_time.strftime('%H:%M')} – {stop_time.strftime('%H:%M')}"
-        )
+        fmt = "%-I:%M %p"
+        start_str = start_time.strftime(fmt)
+        stop_str  = stop_time.strftime(fmt)
+        subject = f"LPFM on air tonight: {start_str} – {stop_str}"
         body = (
-            f"Tonight's broadcast schedule\n"
-            f"{'─' * 32}\n\n"
-            f"  Start:            {start_time.strftime('%H:%M')}\n"
-            f"  Stop:             {stop_time.strftime('%H:%M')}\n\n"
-            f"Risk metrics\n"
-            f"{'─' * 32}\n\n"
-            f"  Tonight's risk:   {risk_score:.2f}\n"
-            f"  Accumulated risk: {accumulated_risk:.2f}\n"
+            f"On air tonight: {start_str} – {stop_str}\n\n"
+            f"  Start:  {start_str}\n"
+            f"  Stop:   {stop_str}\n\n"
+            f"  Tonight's risk:   {risk_score:.3f}\n"
+            f"  Accumulated risk: {accumulated_risk:.3f}\n"
+            f"  {self._risk_bar(accumulated_risk)}\n"
+            f"  Broadcast probability: {max(0, int((1 - accumulated_risk) * 100))}%\n\n"
+            f"Control panel:\n"
+            f"  http://lpfm.local:8080\n"
+            f"  http://localhost:8080\n\n"
+            f"Remote access:\n"
+            f"  https://connect.raspberrypi.com\n"
         )
         self._send_email(subject, body)
 
@@ -75,9 +79,21 @@ class Notifier:
         subject = "LPFM off air tonight"
         body = (
             f"No broadcast tonight.\n\n"
-            f"  Accumulated risk: {accumulated_risk:.2f}\n"
+            f"  Accumulated risk: {accumulated_risk:.3f}\n"
+            f"  {self._risk_bar(accumulated_risk)}\n"
+            f"  Broadcast probability: {max(0, int((1 - accumulated_risk) * 100))}%\n\n"
+            f"Control panel:\n"
+            f"  http://lpfm.local:8080\n"
+            f"  http://localhost:8080\n\n"
+            f"Remote access:\n"
+            f"  https://connect.raspberrypi.com\n"
         )
         self._send_email(subject, body)
+
+    def _risk_bar(self, risk: float, width: int = 24) -> str:
+        """Render a text progress bar for the given risk value (0–1)."""
+        filled = round(min(max(risk, 0.0), 1.0) * width)
+        return '[' + '▓' * filled + '░' * (width - filled) + ']'
 
     def _send_email(self, subject: str, body: str) -> None:
         """Send an email via SMTP, logging and swallowing any errors.
