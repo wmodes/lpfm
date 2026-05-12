@@ -50,9 +50,9 @@ TEMPLATE = """<!DOCTYPE html>
   .btn-restore { background: #0a4a0a; color: #8f8; padding: 7px 18px; }
   .btn-restore:hover { background: #0d600d; }
   .shutoff-banner { color: #f66; font-size: 0.85em; margin-top: 10px; }
-  .manual-row { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .manual-row { display: flex; align-items: center; flex-wrap: wrap; gap: 32px; }
   .status-wrap { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-  .status-label { color: #888; font-size: 0.85em; }
+  .status-label { color: #888; font-size: 0.9em; }
   .toggle-wrap { display: flex; align-items: center; gap: 10px; }
   .toggle-label { color: #888; font-size: 0.85em; }
   .toggle-state { font-size: 0.85em; min-width: 2.5em; }
@@ -87,8 +87,8 @@ TEMPLATE = """<!DOCTYPE html>
   <div class="manual-row">
     <div class="status-wrap">
       <span class="status-label">Status</span>
-      <span id="relay-status" class="{{ 'on-air' if transmitting else 'off-air' }}">
-        {{ '● on air' if transmitting else '○ off air' }}
+      <span id="relay-status" class="{{ 'on-air' if transmitting else 'off-air' }}" style="font-size:0.9em">
+        {{ '● on air' if transmitting else '○ dark' }}
       </span>
     </div>
     <div class="toggle-wrap">
@@ -121,7 +121,7 @@ function updateRelayStatus() {
       if (data.on) {
         el.className = 'on-air'; el.textContent = '● on air';
       } else {
-        el.className = 'off-air'; el.textContent = '○ off air';
+        el.className = 'off-air'; el.textContent = '○ dark';
       }
     })
     .catch(function() {});
