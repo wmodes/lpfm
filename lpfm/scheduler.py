@@ -160,6 +160,16 @@ class Scheduler:
             if self._is_transmitting:
                 self._deactivate_transmitter()
             self._logger.warning("Emergency shutoff active — transmission suspended")
+            # Send one notification at decision time so the operator knows
+            if not today_state.get("shutoff_notified"):
+                decision_dt = self._today_at(self._scheduler_config.decision_time)
+                if now >= decision_dt:
+                    accumulated_risk = state.get("accumulated_risk", 0.0)
+                    if self._notifier:
+                        self._notifier.send_emergency_shutoff(accumulated_risk)
+                    today_state["shutoff_notified"] = True
+                    state["today"] = today_state
+                    self._save_state(state)
             return 60
 
         # ── No prior decision in state (first ever run) ───────────────────────

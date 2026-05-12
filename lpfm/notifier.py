@@ -90,6 +90,28 @@ class Notifier:
         )
         self._send_email(subject, body)
 
+    def send_emergency_shutoff(self, accumulated_risk: float) -> None:
+        """Send a notification that the station is under emergency shutoff.
+
+        Args:
+            accumulated_risk: Current accumulated risk level (0–1).
+        """
+        if not self._config.enabled:
+            return
+
+        subject = "LPFM emergency shutoff active"
+        body = (
+            f"The station is under emergency shutoff — no broadcast tonight.\n\n"
+            f"  Accumulated risk: {accumulated_risk:.3f}\n"
+            f"  {self._risk_bar(accumulated_risk)}\n\n"
+            f"Restore transmission via the control panel:\n"
+            f"  http://lpfm.local:8080\n"
+            f"  http://localhost:8080\n\n"
+            f"Remote access:\n"
+            f"  https://connect.raspberrypi.com\n"
+        )
+        self._send_email(subject, body)
+
     def _risk_bar(self, risk: float, width: int = 24) -> str:
         """Render a text progress bar for the given risk value (0–1)."""
         filled = round(min(max(risk, 0.0), 1.0) * width)
