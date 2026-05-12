@@ -15,7 +15,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, redirect, render_template_string, request
+from flask import Flask, jsonify, redirect, render_template_string, request
 
 from lpfm.config_loader import ControlPanelConfig, SchedulerConfig, StreamConfig
 
@@ -50,7 +50,9 @@ TEMPLATE = """<!DOCTYPE html>
   .btn-restore { background: #0a4a0a; color: #8f8; padding: 7px 18px; }
   .btn-restore:hover { background: #0d600d; }
   .shutoff-banner { color: #f66; font-size: 0.85em; margin-top: 10px; }
-  .manual-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  .manual-row { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .status-wrap { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .status-label { color: #888; font-size: 0.85em; }
   .toggle-wrap { display: flex; align-items: center; gap: 10px; }
   .toggle-label { color: #888; font-size: 0.85em; }
   .toggle-state { font-size: 0.85em; min-width: 2.5em; }
@@ -60,6 +62,9 @@ TEMPLATE = """<!DOCTYPE html>
   .toggle-knob:before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #666; border-radius: 50%; transition: 0.25s; }
   input:checked + .toggle-knob { background: #1a5c1a; }
   input:checked + .toggle-knob:before { transform: translateX(26px); background: #8f8; }
+  .shutoff-form { flex: 1; min-width: 160px; }
+  .btn-shutoff { background: #7a0000; color: #faa; padding: 7px 18px; width: 100%; }
+  .btn-restore-full { background: #0a4a0a; color: #8f8; padding: 7px 18px; width: 100%; }
   .risk-bar { background: #2a2a2a; height: 6px; border-radius: 3px; overflow: hidden; margin: 8px 0 4px; }
   .risk-fill { height: 100%; background: linear-gradient(to right, #2a2, #aa2, #a22); transition: width 0.3s; }
   .risk-value { font-size: 1.6em; color: #f90; }
@@ -76,10 +81,16 @@ TEMPLATE = """<!DOCTYPE html>
 
 <h1>LPFM Control Panel</h1>
 
-<!-- Manual control -->
-<h2>Manual Control</h2>
+<!-- Transmitter control -->
+<h2>Transmitter Control</h2>
 <div class="card {% if shutoff %}danger{% endif %}">
   <div class="manual-row">
+    <div class="status-wrap">
+      <span class="status-label">Status</span>
+      <span id="relay-status" class="{{ 'on-air' if transmitting else 'off-air' }}">
+        {{ '● on air' if transmitting else '○ off air' }}
+      </span>
+    </div>
     <div class="toggle-wrap">
       <span class="toggle-label">Transmitter</span>
       <form method="post" action="/api/transmitter">
@@ -92,15 +103,32 @@ TEMPLATE = """<!DOCTYPE html>
         {% if transmitting %}ON{% else %}OFF{% endif %}
       </span>
     </div>
-    <form method="post" action="/api/shutoff"
+    <form class="shutoff-form" method="post" action="/api/shutoff"
           onsubmit="return confirm('{% if shutoff %}Restore transmission?{% else %}Emergency shutoff — are you sure?{% endif %}')">
-      <button type="submit" class="btn {% if shutoff %}btn-restore{% else %}btn-shutoff{% endif %}">
-        {% if shutoff %}⚡ RESTORE{% else %}⚠ EMERGENCY SHUTOFF{% endif %}
+      <button type="submit" class="btn {% if shutoff %}btn-restore-full{% else %}btn-shutoff{% endif %}">
+        {% if shutoff %}⚡ RESTORE TRANSMISSION{% else %}⚠ EMERGENCY SHUTOFF{% endif %}
       </button>
     </form>
   </div>
   {% if shutoff %}<p class="shutoff-banner">Transmission is currently suspended.</p>{% endif %}
 </div>
+<script>
+function updateRelayStatus() {
+  fetch('/api/relay-status')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var el = document.getElementById('relay-status');
+      if (data.on) {
+        el.className = 'on-air'; el.textContent = '● on air';
+      } else {
+        el.className = 'off-air'; el.textContent = '○ off air';
+      }
+    })
+    .catch(function() {});
+}
+updateRelayStatus();
+setInterval(updateRelayStatus, 120000);
+</script>
 
 <!-- Tonight's broadcast -->
 <h2>Tonight's Broadcast</h2>
@@ -228,6 +256,7 @@ class ControlPanel:
         stream_config: Provides the default stream URL for the UI.
         scheduler: Called to wake the scheduling thread after state changes.
         stream: Called to switch the live stream URL immediately.
+        relay: Queried for live transmitter status.
     """
 
     def __init__(
@@ -237,12 +266,14 @@ class ControlPanel:
         stream_config: StreamConfig,
         scheduler,
         stream,
+        relay,
     ):
         self._config = control_panel_config
         self._scheduler_config = scheduler_config
         self._stream_config = stream_config
         self._scheduler = scheduler
         self._stream = stream
+        self._relay = relay
         self._logger = logging.getLogger(__name__)
         self._app = Flask(__name__)
         self._app.logger.setLevel(logging.ERROR)  # suppress Flask request logs
@@ -309,6 +340,14 @@ class ControlPanel:
             state["today"] = today
             self._write_state(state)
             return redirect("/")
+
+        @app.route("/api/relay-status")
+        def relay_status():
+            try:
+                on = self._relay.get_state()
+            except Exception:
+                on = False
+            return jsonify({"on": on})
 
         @app.route("/api/transmitter", methods=["POST"])
         def toggle_transmitter():

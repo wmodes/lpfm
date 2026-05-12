@@ -43,7 +43,7 @@ def main() -> None:
     stream = StreamFetcher(config.stream, config.audio)
     scheduler = Scheduler(config.scheduler, config.risk, relay, stream, notifier)
     watchdog = Watchdog(config.watchdog, stream, relay, fallback, scheduler)
-    control_panel = ControlPanel(config.control_panel, config.scheduler, config.stream, scheduler, stream)
+    control_panel = ControlPanel(config.control_panel, config.scheduler, config.stream, scheduler, stream, relay)
 
     def shutdown(signum, frame):
         logger.info("Shutdown signal received — stopping station")
