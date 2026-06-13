@@ -21,6 +21,7 @@ a fixed interval.
 
 import json
 import logging
+import math
 import random
 import threading
 
@@ -266,10 +267,19 @@ class Scheduler:
         accumulated_risk = decay * state.get("accumulated_risk", 0.0) + (1 - decay) * yesterday_risk
         accumulated_risk = max(0.0, min(1.0, accumulated_risk))
 
-        # Broadcast probability is purely probabilistic — no hard threshold.
-        # As accumulated risk rises toward 1.0, probability falls toward 0.
-        # The EMA keeps accumulated_risk bounded, so the curve naturally self-limits.
-        probability = max(0.0, 1.0 - accumulated_risk)
+        # Broadcast probability follows a sigmoid curve:
+        #   probability = 1 / (1 + exp(steepness × (accumulated_risk − midpoint)))
+        #
+        # The sigmoid is forgiving at low accumulated risk (station gets generous
+        # probability well below the midpoint) and drops sharply past the midpoint.
+        # This is more realistic than linear: small accumulated risk barely penalizes
+        # the station; sustained hot streaks trigger a stronger pullback.
+        #
+        # The curve is asymptotic — never exactly 0 or 1 — so there is always some
+        # chance of broadcasting (or not), which is the intended behavior.
+        midpoint   = self._risk_config.sigmoid_midpoint
+        steepness  = self._risk_config.sigmoid_steepness
+        probability = 1.0 / (1.0 + math.exp(steepness * (accumulated_risk - midpoint)))
 
         roll = random.random()
         broadcasting = roll < probability

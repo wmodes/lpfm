@@ -54,6 +54,13 @@ weight_day = 0.5            # relative weight of day-of-week risk
 #   sensitivity=2 → mild skew   sensitivity=3 → moderate   sensitivity=5 → aggressive
 time_picker_sensitivity = 3.0
 
+# Sigmoid probability curve: probability = 1 / (1 + exp(steepness × (acc − midpoint)))
+# midpoint: accumulated_risk at which broadcast probability = 50%. Higher = more permissive.
+# steepness: sharpness of the S-curve. Higher = harder cutoff around the midpoint.
+#   At low accumulated risk the sigmoid is forgiving; past midpoint it drops quickly.
+sigmoid_midpoint  = 0.55
+sigmoid_steepness = 8.0
+
 [risk.day_weights]
 monday    = 1.0
 tuesday   = 0.8

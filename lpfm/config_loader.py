@@ -75,8 +75,10 @@ class RiskConfig:
     where risk[t] = 0 on dark nights. This keeps accumulated_risk bounded
     in [0, 1] and semantically represents recent average broadcast risk.
     """
-    decay_factor: float           # EMA smoothing: weight given to history (0=no memory, 1=never forgets)
+    decay_factor: float             # EMA smoothing: weight given to history (0=no memory, 1=never forgets)
     time_picker_sensitivity: float  # Beta distribution skew strength under accumulated risk
+    sigmoid_midpoint: float         # accumulated_risk at which broadcast probability = 50%
+    sigmoid_steepness: float        # sharpness of the sigmoid S-curve
     weight_start: float
     weight_stop: float
     weight_duration: float
@@ -287,6 +289,8 @@ class ConfigLoader:
         return RiskConfig(
             decay_factor=self._require(s, "decay_factor", "risk"),
             time_picker_sensitivity=self._require(s, "time_picker_sensitivity", "risk"),
+            sigmoid_midpoint=self._require(s, "sigmoid_midpoint", "risk"),
+            sigmoid_steepness=self._require(s, "sigmoid_steepness", "risk"),
             weight_start=self._require(s, "weight_start", "risk"),
             weight_stop=self._require(s, "weight_stop", "risk"),
             weight_duration=self._require(s, "weight_duration", "risk"),
