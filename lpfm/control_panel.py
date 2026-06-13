@@ -204,7 +204,7 @@ function validateStreamUrl(form) {
     alert('URL must start with http:// or https://');
     return false;
   }
-  if (url.match(/\.(m3u|pls|xspf)(\?.*)?$/i)) {
+  if (url.match(/[.](m3u|pls|xspf)([?].*)?$/i)) {
     return confirm('This looks like a playlist file, not a direct stream — ffmpeg may not handle it correctly. Continue anyway?');
   }
   return true;
