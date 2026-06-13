@@ -89,10 +89,12 @@ On a dark night, `risk[t] = 0`, so accumulated risk decays toward zero. On a bro
 ### Broadcast probability
 
 ```
-broadcast_probability = max(0, 1 − accumulated_risk)
+broadcast_probability = 1 / (1 + exp(steepness × (accumulated_risk − midpoint)))
 ```
 
-There is no hard threshold — the probability curve handles everything. As accumulated risk rises, the chance of broadcasting falls smoothly. When dark nights bring it back down, the station naturally becomes active again. The result is runs of several consecutive nights with occasional breaks, rather than a mechanical on/off pattern.
+A sigmoid curve centered at `sigmoid_midpoint`. At low accumulated risk the station is barely penalized; past the midpoint probability drops sharply. The curve is asymptotic — probability never reaches exactly 0 or 1, so there is always some chance of broadcasting on any given night. There is no hard threshold: the sigmoid handles everything.
+
+`sigmoid_midpoint` sets the accumulated risk level at which probability = 50%. `sigmoid_steepness` controls how sharply the curve bends around that point.
 
 ### Risk-aware time picker
 
@@ -125,6 +127,8 @@ stop_leeway_max_minutes = 240        # random stop is picked within this offset 
 [risk]
 decay_factor = 0.7                   # EMA memory: higher = slower decay, longer history (~2-day half-life)
 time_picker_sensitivity = 3.0        # Beta skew strength: 0 = uniform, higher = stronger nudge toward safer times
+sigmoid_midpoint  = 0.55             # accumulated_risk at which broadcast probability = 50%
+sigmoid_steepness = 8.0              # sharpness of the S-curve around the midpoint
 weight_start = 1.0                   # relative weight — normalized at runtime
 weight_stop = 0.8
 weight_duration = 0.8
