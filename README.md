@@ -2,7 +2,7 @@
 
 *LPFM* is a low-power FM station that broadcasts a live internet radio stream over the air — automatically, unpredictably, and with a light touch of operational paranoia.
 
-A Raspberry Pi grabs an audio stream from an Icecast server, routes it through a USB audio dongle into an FM transmitter, and controls transmitter power via a wifi-connected relay. The station doesn't run on a fixed schedule. Instead, a probabilistic risk model decides each morning whether to broadcast that night, and if so, picks random start and stop times within a configured window. Risk accumulates across days with exponential decay, so a long late-night session nudges the station toward caution — but only for a while.
+A Raspberry Pi grabs an audio stream from an Icecast server, routes it through a USB audio dongle into an FM transmitter, and controls transmitter power via a wifi-connected relay. The station doesn't run on a fixed schedule. Instead, a probabilistic risk model decides each morning whether to broadcast that night, and if so, picks random start and stop times within a configured window. Accumulated risk is maintained as an exponential moving average of recent broadcast risk scores — a long late-night run nudges the station toward caution, and dark nights let it recover. The result is natural runs of several nights on air, occasional breaks, and no predictable pattern.
 
 ---
 
@@ -10,10 +10,10 @@ A Raspberry Pi grabs an audio stream from an Icecast server, routes it through a
 
 Each morning at a configured decision time, the scheduler:
 
-1. Calculates **accumulated risk** from recent broadcasts (exponential decay — risk from last night still matters, but fades over ~3 days)
-2. Computes a **broadcast probability** (`1 − accumulated_risk`)
+1. Updates **accumulated risk** as an exponential moving average of recent broadcast risk scores — dark nights decay it, broadcast nights blend in a new score
+2. Computes a **broadcast probability** (`1 − accumulated_risk`) — no hard threshold, the curve self-limits naturally
 3. Rolls the dice
-4. If broadcasting: picks a random **start time** (within leeway of window open) and **stop time** (within leeway of window close), sends an email notification
+4. If broadcasting: picks a random **start time** and **stop time** within configured leeway windows, using a risk-aware Beta distribution that skews toward safer times when accumulated risk is elevated — then sends an email notification
 5. If not: sends a "dark tonight" notification and waits until tomorrow
 
 The transmitter fires up at the decided start time and cuts at the decided stop time — no manual intervention needed. A watchdog monitors the stream continuously and cuts the transmitter if the stream dies, activating a local fallback player until the stream recovers.
@@ -55,7 +55,9 @@ All components run as background threads inside a single Python process, managed
 
 ## Risk Model
 
-Each broadcast generates a risk score from four weighted factors:
+### Nightly risk score
+
+Each broadcast generates a risk score in [0, 1] from four weighted factors:
 
 | Factor | Higher risk when… |
 |--------|-------------------|
@@ -64,16 +66,45 @@ Each broadcast generates a risk score from four weighted factors:
 | `duration_risk` | broadcast runs longer |
 | `day_risk` | broadcast falls on a higher-risk day of week |
 
-Weights are configured as relative values and normalized at runtime — no need to sum to 1.0.
+Each factor is normalized to [0, 1] within its own range. Weights are configured as relative values and normalized at runtime — no need to sum to 1.0. The weighted average is the night's risk score, also bounded [0, 1].
 
-Risk accumulates across days:
+### Accumulated risk (EMA)
+
+Risk accumulates across days as an **exponential moving average**:
 
 ```
-accumulated_risk = last_broadcast_risk + decay_factor × prev_accumulated_risk
+acc[t] = decay_factor × acc[t-1]  +  (1 − decay_factor) × risk[t]
+```
+
+On a dark night, `risk[t] = 0`, so accumulated risk decays toward zero. On a broadcast night it blends toward that night's score. The two weights sum to 1, keeping `accumulated_risk` bounded in [0, 1] at all times — it cannot blow up.
+
+`decay_factor` controls the memory window. Higher values give history more weight and slow the response to recent nights:
+
+| `decay_factor` | half-life of past risk |
+|---|---|
+| 0.5 | ~1 dark night |
+| 0.7 | ~2 dark nights |
+| 0.9 | ~6 dark nights |
+
+### Broadcast probability
+
+```
 broadcast_probability = max(0, 1 − accumulated_risk)
 ```
 
-A `broadcast_threshold` can hard-block broadcasts above a given risk level. Set to `0` to disable.
+There is no hard threshold — the probability curve handles everything. As accumulated risk rises, the chance of broadcasting falls smoothly. When dark nights bring it back down, the station naturally becomes active again. The result is runs of several consecutive nights with occasional breaks, rather than a mechanical on/off pattern.
+
+### Risk-aware time picker
+
+When the station is running hot, times are picked from a **Beta(1, k) distribution** rather than uniform random, where:
+
+```
+k = 1 + accumulated_risk × time_picker_sensitivity
+```
+
+At zero accumulated risk, `k = 1` and the distribution is uniform — all times equally likely. As `k` grows, draws cluster toward larger offsets from the window boundaries (later start, earlier stop = shorter, safer broadcast), but the **full range remains live**. An early start can still happen under pressure; it just becomes less probable.
+
+This avoids normalizing to a predictable median: the distribution skews probabilistically, not deterministically. `time_picker_sensitivity` controls how aggressively it skews — higher values create a stronger nudge toward safer times under sustained risk.
 
 ---
 
@@ -92,8 +123,8 @@ start_leeway_max_minutes = 240       # random start is picked within this offset
 stop_leeway_max_minutes = 240        # random stop is picked within this offset back from window_end
 
 [risk]
-decay_factor = 0.5                   # risk fades to ~12% of original after 3 broadcast-free days
-broadcast_threshold = 0.85           # hard block above this accumulated risk (0 to disable)
+decay_factor = 0.7                   # EMA memory: higher = slower decay, longer history (~2-day half-life)
+time_picker_sensitivity = 3.0        # Beta skew strength: 0 = uniform, higher = stronger nudge toward safer times
 weight_start = 1.0                   # relative weight — normalized at runtime
 weight_stop = 0.8
 weight_duration = 0.8
