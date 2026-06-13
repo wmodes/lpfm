@@ -35,12 +35,24 @@ stop_leeway_max_minutes = 240        # max offset back from window_end for rando
 state_file = "state/scheduler.json"  # persisted risk and decision state
 
 [risk]
-decay_factor = 0.5          # how quickly past risk fades (0–1; ~3 days to near-zero)
-broadcast_threshold = 0.85  # accumulated risk above this = no broadcast (0 to disable)
+# Exponential moving average: accumulated = decay × prev_accumulated + (1−decay) × today_risk
+# decay_factor controls how much history persists. Higher = slower to respond, longer memory.
+# Half-life of past risk: solve decay^n = 0.5 → n = log(0.5)/log(decay)
+#   decay=0.5 → half-life ~1 day   decay=0.7 → ~2 days   decay=0.9 → ~6 days
+decay_factor = 0.7
+
 weight_start = 1.0          # relative weight of start-time risk (normalized at runtime)
 weight_stop = 0.8           # relative weight of stop-time risk
 weight_duration = 0.8       # relative weight of broadcast duration risk
 weight_day = 0.5            # relative weight of day-of-week risk
+
+# Controls how aggressively the time-picker skews toward safer times when risk is elevated.
+# The picker uses a Beta(1, k) distribution where k = 1 + accumulated_risk × sensitivity.
+# At k=1 (zero risk) the distribution is uniform. As k grows, draws cluster toward larger
+# offsets from window boundaries (later start, earlier stop = shorter, safer broadcast).
+# Higher sensitivity = stronger skew under pressure; 0 = always uniform (disables feature).
+#   sensitivity=2 → mild skew   sensitivity=3 → moderate   sensitivity=5 → aggressive
+time_picker_sensitivity = 3.0
 
 [risk.day_weights]
 monday    = 1.0

@@ -244,24 +244,32 @@ class Scheduler:
         """
         today_str = now.strftime("%Y-%m-%d")
 
-        # Update accumulated risk from yesterday's broadcast before deciding
+        # Accumulated risk is an exponential moving average (EMA) of broadcast risk scores.
+        #
+        # Formula: acc[t] = decay × acc[t-1]  +  (1 − decay) × risk[t]
+        #
+        # On a dark night, risk[t] = 0, so accumulated_risk decays toward zero.
+        # On a broadcast night, it blends toward that night's risk score.
+        # The weights (decay) and (1 − decay) sum to 1, keeping accumulated_risk
+        # bounded in [0, 1] at all times — it cannot blow up the way a plain sum can.
+        #
+        # decay_factor controls the memory window:
+        #   high decay (0.9) → slow response, long memory (~6-day half-life)
+        #   low decay  (0.5) → fast response, short memory (~1-day half-life)
         yesterday = state.get("today", {})
         yesterday_risk = (
             yesterday.get("risk_score", 0.0)
             if yesterday.get("broadcasting", False)
             else 0.0
         )
-        accumulated_risk = (
-            yesterday_risk + self._risk_config.decay_factor * state.get("accumulated_risk", 0.0)
-        )
+        decay = self._risk_config.decay_factor
+        accumulated_risk = decay * state.get("accumulated_risk", 0.0) + (1 - decay) * yesterday_risk
         accumulated_risk = max(0.0, min(1.0, accumulated_risk))
 
-        # Calculate broadcast probability, applying hard threshold if configured
-        threshold = self._risk_config.broadcast_threshold
-        if threshold > 0 and accumulated_risk >= threshold:
-            probability = 0.0
-        else:
-            probability = max(0.0, 1.0 - accumulated_risk)
+        # Broadcast probability is purely probabilistic — no hard threshold.
+        # As accumulated risk rises toward 1.0, probability falls toward 0.
+        # The EMA keeps accumulated_risk bounded, so the curve naturally self-limits.
+        probability = max(0.0, 1.0 - accumulated_risk)
 
         roll = random.random()
         broadcasting = roll < probability
@@ -273,7 +281,7 @@ class Scheduler:
         )
 
         if broadcasting:
-            start_dt, stop_dt = self._pick_broadcast_times()
+            start_dt, stop_dt = self._pick_broadcast_times(accumulated_risk)
             risk_score = self._calculate_risk(start_dt, stop_dt)
             today_data = {
                 "date": today_str,
@@ -418,31 +426,73 @@ class Scheduler:
 
     # ── Time picking ──────────────────────────────────────────────────────────
 
-    def _pick_broadcast_times(self) -> tuple:
-        """Randomly pick a start and stop time within the configured leeway windows.
+    def _pick_broadcast_times(self, accumulated_risk: float = 0.0) -> tuple:
+        """Pick a random start and stop time within the configured leeway windows.
 
-        Start is picked in [window_start, window_start + start_leeway_max].
-        Stop is picked in  [window_end - stop_leeway_max, window_end].
+        Uses a Beta(1, k) distribution rather than uniform random, where k scales
+        with accumulated_risk. This skews draws toward larger offsets from the window
+        boundaries (later start, earlier stop = shorter, safer broadcast) when the
+        station is running hot — without ever collapsing the range to a fixed value.
+
+        How the Beta distribution works here
+        -------------------------------------
+        Beta(α=1, β=k) is a distribution on [0, 1]:
+          - k=1: uniform — every offset in the leeway window is equally likely.
+          - k>1: right-skewed — draws cluster toward 1.0 (large offset = safe),
+                 but the full range [0, 1] remains reachable. Nothing is impossible,
+                 just less probable.
+
+        The shape parameter grows linearly with risk:
+            k = 1 + accumulated_risk × time_picker_sensitivity
+
+        At zero risk, k=1 → uniform. As accumulated_risk rises toward 1.0, k rises
+        toward (1 + sensitivity), increasing the skew. The sensitivity config param
+        controls aggressiveness:
+          sensitivity=2 → mild skew   sensitivity=3 → moderate   sensitivity=5 → strong
+
+        Mean offset as a fraction of max leeway = 1 / (1 + k):
+          k=1.0 (risk=0.0, sens=3) → mean at 50% of leeway  (fully random)
+          k=2.5 (risk=0.5, sens=3) → mean at 29% of leeway  (moderate skew)
+          k=4.0 (risk=1.0, sens=3) → mean at 20% of leeway  (strong skew)
+
+        This avoids normalizing to a predictable median: the distribution shifts
+        probabilistically, not deterministically. The station sounds different every
+        night even under pressure, while still naturally picking safer times.
+
+        Args:
+            accumulated_risk: Current EMA risk level (0–1). Drives Beta shape parameter.
 
         Returns:
             Tuple of (start_datetime, stop_datetime).
         """
         window_start, window_end = self._window_datetimes()
 
-        start_offset = random.randint(0, self._scheduler_config.start_leeway_max_minutes)
-        stop_offset = random.randint(0, self._scheduler_config.stop_leeway_max_minutes)
+        sensitivity = self._risk_config.time_picker_sensitivity
+        k = 1.0 + accumulated_risk * sensitivity
+
+        # Beta(1, k): larger k → more draws near 1.0 → larger offset → safer time
+        start_frac = random.betavariate(1, k)
+        stop_frac  = random.betavariate(1, k)
+
+        start_offset = int(start_frac * self._scheduler_config.start_leeway_max_minutes)
+        stop_offset  = int(stop_frac  * self._scheduler_config.stop_leeway_max_minutes)
 
         start_dt = window_start + timedelta(minutes=start_offset)
-        stop_dt = window_end - timedelta(minutes=stop_offset)
+        stop_dt  = window_end   - timedelta(minutes=stop_offset)
 
-        # Guard against inverted times from misconfigured leeway values
+        self._logger.debug(
+            f"Time picker: accumulated_risk={accumulated_risk:.3f}, k={k:.2f}, "
+            f"start_offset={start_offset}min, stop_offset={stop_offset}min"
+        )
+
+        # Guard against inverted times from very wide leeway + tight window
         if start_dt >= stop_dt:
             self._logger.warning(
                 "Picked start/stop times were inverted — using window midpoint fallback"
             )
             mid = window_start + (window_end - window_start) / 2
             start_dt = mid - timedelta(minutes=30)
-            stop_dt = mid + timedelta(minutes=30)
+            stop_dt  = mid + timedelta(minutes=30)
 
         return start_dt, stop_dt
 

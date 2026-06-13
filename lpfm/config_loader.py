@@ -68,9 +68,15 @@ class SchedulerConfig:
 
 @dataclass
 class RiskConfig:
-    """Risk model weights, decay, and per-day multipliers."""
-    decay_factor: float
-    broadcast_threshold: float
+    """Risk model weights, decay, and per-day multipliers.
+
+    accumulated_risk is maintained as an exponential moving average (EMA):
+        acc[t] = decay_factor × acc[t-1]  +  (1 − decay_factor) × risk[t]
+    where risk[t] = 0 on dark nights. This keeps accumulated_risk bounded
+    in [0, 1] and semantically represents recent average broadcast risk.
+    """
+    decay_factor: float           # EMA smoothing: weight given to history (0=no memory, 1=never forgets)
+    time_picker_sensitivity: float  # Beta distribution skew strength under accumulated risk
     weight_start: float
     weight_stop: float
     weight_duration: float
@@ -280,7 +286,7 @@ class ConfigLoader:
         s = self._require_section(raw, "risk")
         return RiskConfig(
             decay_factor=self._require(s, "decay_factor", "risk"),
-            broadcast_threshold=self._require(s, "broadcast_threshold", "risk"),
+            time_picker_sensitivity=self._require(s, "time_picker_sensitivity", "risk"),
             weight_start=self._require(s, "weight_start", "risk"),
             weight_stop=self._require(s, "weight_stop", "risk"),
             weight_duration=self._require(s, "weight_duration", "risk"),
