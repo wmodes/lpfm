@@ -127,11 +127,20 @@ class Watchdog:
         # Only restore the transmitter if inside the broadcast window and shutoff is not active
         in_window = self._scheduler.is_in_broadcast_window() if self._scheduler else True
         shutoff = self._scheduler.is_emergency_shutoff() if self._scheduler else False
+        self._logger.info(
+            f"Stream recovery: in_window={in_window}, emergency_shutoff={shutoff}"
+        )
         if in_window and not shutoff:
             try:
                 self._relay_controller.turn_on()
+                self._logger.info("Transmitter restored after stream recovery [watchdog]")
             except RelayError as e:
                 self._logger.error(f"Failed to restore transmitter after recovery: {e}")
+        else:
+            self._logger.info(
+                "Transmitter not restored after recovery "
+                f"({'outside window' if not in_window else 'emergency shutoff active'})"
+            )
 
     # ── Unhealthy path ────────────────────────────────────────────────────────
 

@@ -121,12 +121,18 @@ class Scheduler:
     def transmitter_on(self) -> None:
         """Manually activate the transmitter regardless of schedule."""
         if not self._is_transmitting:
-            self._activate_transmitter()
+            self._logger.info("Manual transmitter ON requested via control panel")
+            self._activate_transmitter(source="manual")
+        else:
+            self._logger.info("Manual transmitter ON: already transmitting, no-op")
 
     def transmitter_off(self) -> None:
         """Manually deactivate the transmitter regardless of schedule."""
         if self._is_transmitting:
-            self._deactivate_transmitter()
+            self._logger.info("Manual transmitter OFF requested via control panel")
+            self._deactivate_transmitter(source="manual")
+        else:
+            self._logger.info("Manual transmitter OFF: already dark, no-op")
 
     # ── Schedule loop ─────────────────────────────────────────────────────────
 
@@ -158,7 +164,7 @@ class Scheduler:
         # ── Emergency shutoff overrides all scheduling ─────────────────────────
         if state.get("emergency_shutoff"):
             if self._is_transmitting:
-                self._deactivate_transmitter()
+                self._deactivate_transmitter(source="emergency shutoff")
             self._logger.warning("Emergency shutoff active — transmission suspended")
             # Send one notification at decision time so the operator knows
             if not today_state.get("shutoff_notified"):
@@ -300,39 +306,53 @@ class Scheduler:
 
     # ── Transmitter control ───────────────────────────────────────────────────
 
-    def _activate_transmitter(self) -> None:
+    def _activate_transmitter(self, source: str = "schedule") -> None:
         """Turn the relay on if the stream is healthy.
 
         Applies a one-time stream URL override if one is set in today's state.
+
+        Args:
+            source: What triggered this call — "schedule", "manual", or "recovery".
         """
-        if not self._stream_fetcher.is_running():
+        stream_ok = self._stream_fetcher.is_running()
+        self._logger.info(
+            f"Activating transmitter [{source}] — "
+            f"stream {'running' if stream_ok else 'NOT running'}"
+        )
+        if not stream_ok:
             self._logger.warning(
-                "Broadcast window start reached but stream is not running — "
-                "holding off on transmitter until stream recovers"
+                f"Transmitter activation [{source}] blocked: stream is not running — "
+                "will retry when stream recovers"
             )
             return
 
         # Apply one-time stream URL override if configured for tonight
         override_url = self._load_state().get("today", {}).get("stream_url_override")
         if override_url:
+            self._logger.info(f"Applying stream URL override: {override_url}")
             self._stream_fetcher.set_url(override_url)
 
-        self._logger.info("Broadcast window start: activating transmitter")
         try:
             self._relay_controller.turn_on()
             self._is_transmitting = True
+            self._logger.info(f"Transmitter ON [{source}]")
         except RelayError as e:
-            self._logger.error(f"Failed to activate transmitter at window start: {e}")
+            self._logger.error(f"Failed to activate transmitter [{source}]: {e}")
 
-    def _deactivate_transmitter(self) -> None:
-        """Turn the relay off at the end of the broadcast window."""
-        self._logger.info("Broadcast window end: deactivating transmitter")
+    def _deactivate_transmitter(self, source: str = "schedule") -> None:
+        """Turn the relay off.
+
+        Args:
+            source: What triggered this call — "schedule", "manual", or "emergency shutoff".
+        """
+        self._logger.info(f"Deactivating transmitter [{source}]")
         try:
             self._relay_controller.turn_off()
             self._is_transmitting = False
+            self._logger.info(f"Transmitter OFF [{source}]")
             self._stream_fetcher.reset_url()  # revert to default stream after broadcast
         except RelayError as e:
-            self._logger.error(f"Failed to deactivate transmitter at window end: {e}")
+            self._logger.error(f"Failed to deactivate transmitter [{source}]: {e}")
 
     # ── Risk model ────────────────────────────────────────────────────────────
 

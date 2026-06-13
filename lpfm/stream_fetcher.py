@@ -153,9 +153,19 @@ class StreamFetcher:
     def _drain_stderr(self) -> None:
         """Read ffmpeg stderr line by line and forward to the Python logger.
 
-        Runs in a daemon thread for the lifetime of the subprocess.
+        Runs in a daemon thread for the lifetime of the subprocess. ffmpeg
+        writes warnings and errors to stderr; log them at WARNING so they
+        surface without enabling full DEBUG output.
         """
-        for raw_line in self._process.stderr:
+        process = self._process
+        for raw_line in process.stderr:
             line = raw_line.decode(errors="replace").rstrip()
             if line:
-                self._logger.debug(f"ffmpeg: {line}")
+                self._logger.warning(f"ffmpeg: {line}")
+        # stderr EOF means the process exited — log the return code
+        if process and process.poll() is not None:
+            rc = process.returncode
+            if rc == 0:
+                self._logger.info(f"ffmpeg exited cleanly (rc={rc})")
+            else:
+                self._logger.error(f"ffmpeg exited unexpectedly (rc={rc})")

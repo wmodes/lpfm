@@ -340,6 +340,10 @@ class ControlPanel:
             today["stop"] = request.form.get("stop", today.get("stop", ""))
             state["today"] = today
             self._write_state(state)
+            self._logger.info(
+                f"Schedule updated via control panel: broadcasting={today['broadcasting']}, "
+                f"start={today['start']!r}, stop={today['stop']!r}"
+            )
             self._scheduler.wake()
             return redirect("/")
 
@@ -351,9 +355,11 @@ class ControlPanel:
             if url and url != self._stream_config.url:
                 today["stream_url_override"] = url
                 self._stream.set_url(url)
+                self._logger.info(f"Stream URL override set via control panel: {url}")
             else:
                 today.pop("stream_url_override", None)
                 self._stream.reset_url()
+                self._logger.info("Stream URL reset to default via control panel")
             state["today"] = today
             self._write_state(state)
             return redirect("/")
@@ -368,7 +374,11 @@ class ControlPanel:
 
         @app.route("/api/transmitter", methods=["POST"])
         def toggle_transmitter():
-            if self._scheduler.is_transmitting:
+            current = self._scheduler.is_transmitting
+            self._logger.info(
+                f"Transmitter toggle via control panel: {'ON→OFF' if current else 'OFF→ON'}"
+            )
+            if current:
                 self._scheduler.transmitter_off()
             else:
                 self._scheduler.transmitter_on()
@@ -377,8 +387,12 @@ class ControlPanel:
         @app.route("/api/shutoff", methods=["POST"])
         def toggle_shutoff():
             state = self._load_state()
-            state["emergency_shutoff"] = not state.get("emergency_shutoff", False)
+            new_state = not state.get("emergency_shutoff", False)
+            state["emergency_shutoff"] = new_state
             self._write_state(state)
+            self._logger.warning(
+                f"Emergency shutoff {'ACTIVATED' if new_state else 'CLEARED'} via control panel"
+            )
             self._scheduler.wake()
             return redirect("/")
 
