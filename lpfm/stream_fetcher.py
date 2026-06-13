@@ -41,6 +41,7 @@ class StreamFetcher:
         self._process = None
         self._stderr_thread = None
         self._url_override = None
+        self._stopping = False   # set True during intentional stop to suppress false exit alarms
         self._logger = logging.getLogger(__name__)
 
     def start(self) -> None:
@@ -91,6 +92,7 @@ class StreamFetcher:
             return
 
         self._logger.info("Stopping stream fetcher")
+        self._stopping = True
         self._process.terminate()
 
         try:
@@ -101,6 +103,7 @@ class StreamFetcher:
             self._process.wait()
 
         self._process = None
+        self._stopping = False
 
     def is_running(self) -> bool:
         """Return True if the ffmpeg subprocess is currently alive."""
@@ -162,8 +165,8 @@ class StreamFetcher:
             line = raw_line.decode(errors="replace").rstrip()
             if line:
                 self._logger.warning(f"ffmpeg: {line}")
-        # stderr EOF means the process exited — log the return code
-        if process and process.poll() is not None:
+        # stderr EOF means the process exited — log the return code unless we stopped it
+        if process and process.poll() is not None and not self._stopping:
             rc = process.returncode
             if rc == 0:
                 self._logger.info(f"ffmpeg exited cleanly (rc={rc})")
