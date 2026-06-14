@@ -586,11 +586,29 @@ class Scheduler:
 
         history_path = path.parent / "history.jsonl"
         entry = {"saved_at": datetime.now().isoformat(timespec="seconds"), **state}
+        today_date = state.get("today", {}).get("date", "")
         try:
-            with open(history_path, "a") as f:
-                f.write(json.dumps(entry) + "\n")
+            lines = []
+            if history_path.exists():
+                with open(history_path) as f:
+                    lines = [l for l in f if l.strip()]
+            # Replace the last entry if it's for the same date; otherwise append.
+            # This prevents rerolls and manual edits from creating duplicate rows.
+            if lines:
+                try:
+                    last_date = json.loads(lines[-1]).get("today", {}).get("date", "")
+                    if last_date == today_date:
+                        lines[-1] = json.dumps(entry) + "\n"
+                    else:
+                        lines.append(json.dumps(entry) + "\n")
+                except json.JSONDecodeError:
+                    lines.append(json.dumps(entry) + "\n")
+            else:
+                lines = [json.dumps(entry) + "\n"]
+            with open(history_path, "w") as f:
+                f.writelines(lines)
         except OSError as e:
-            self._logger.error(f"Failed to append to history: {e}")
+            self._logger.error(f"Failed to update history: {e}")
 
     # ── Time helpers ──────────────────────────────────────────────────────────
 
