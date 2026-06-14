@@ -40,6 +40,7 @@ TEMPLATE = """<!DOCTYPE html>
   }
   input[type=text] { width: 100%; }
   .row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-top: 14px; }
+  .group { display: flex; gap: 16px; align-items: flex-start; flex-shrink: 0; }
   .field { display: flex; flex-direction: column; }
   .field-grow { flex: 1; min-width: 200px; }
   .btn { padding: 7px 18px; border: none; border-radius: 3px; cursor: pointer; font-family: monospace; font-size: 0.95em; }
@@ -154,30 +155,34 @@ setInterval(updateRelayStatus, 120000);
   <form id="reroll-form" method="post" action="/api/reroll"></form>
   <form method="post" action="/api/schedule" onsubmit="return validateSchedule(this)">
     <div class="row">
-      <div class="field">
-        <label>&nbsp;</label>
-        <button type="submit" form="reroll-form" class="btn"
-                style="background:#1a1a4a;color:#88f;border:1px solid #446"
-                title="Re-run today's broadcast decision with a new random roll">↺ Reroll</button>
+      <div class="group">
+        <div class="field">
+          <label>&nbsp;</label>
+          <button type="submit" form="reroll-form" class="btn"
+                  style="background:#1a1a4a;color:#88f;border:1px solid #446"
+                  title="Re-run today's broadcast decision with a new random roll">↺ Reroll</button>
+        </div>
+        <div class="field">
+          <label>Broadcasting</label>
+          <select name="broadcasting">
+            <option value="true"  {% if today.get('broadcasting') %}selected{% endif %}>Yes</option>
+            <option value="false" {% if not today.get('broadcasting') %}selected{% endif %}>No</option>
+          </select>
+        </div>
       </div>
-      <div class="field">
-        <label>Broadcasting</label>
-        <select name="broadcasting">
-          <option value="true"  {% if today.get('broadcasting') %}selected{% endif %}>Yes</option>
-          <option value="false" {% if not today.get('broadcasting') %}selected{% endif %}>No</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Start</label>
-        <input type="time" name="start" id="sched-start" value="{{ today.get('start', '') }}">
-      </div>
-      <div class="field">
-        <label>Stop</label>
-        <input type="time" name="stop" id="sched-stop" value="{{ today.get('stop', '') }}">
-      </div>
-      <div class="field">
-        <label>&nbsp;</label>
-        <button type="submit" class="btn btn-save">Save Schedule</button>
+      <div class="group">
+        <div class="field">
+          <label>Start</label>
+          <input type="time" name="start" id="sched-start" value="{{ today.get('start', '') }}">
+        </div>
+        <div class="field">
+          <label>Stop</label>
+          <input type="time" name="stop" id="sched-stop" value="{{ today.get('stop', '') }}">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn btn-save">Save Schedule</button>
+        </div>
       </div>
     </div>
   </form>
