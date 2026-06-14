@@ -237,14 +237,12 @@ class Scheduler:
     # ── Daily decision ────────────────────────────────────────────────────────
 
     def _make_daily_decision(self, now: datetime, state: dict) -> None:
-        """Calculate risk, roll the dice, pick times, persist state, and notify.
+        """Update accumulated risk from yesterday, then roll today's decision.
 
         Args:
             now: Current datetime (used to resolve today's window times).
             state: Previously loaded state dict (contains yesterday's broadcast data).
         """
-        today_str = now.strftime("%Y-%m-%d")
-
         # Accumulated risk is an exponential moving average (EMA) of broadcast risk scores.
         #
         # Formula: acc[t] = decay × acc[t-1]  +  (1 − decay) × risk[t]
@@ -267,18 +265,45 @@ class Scheduler:
         accumulated_risk = decay * state.get("accumulated_risk", 0.0) + (1 - decay) * yesterday_risk
         accumulated_risk = max(0.0, min(1.0, accumulated_risk))
 
-        # Broadcast probability follows a sigmoid curve:
-        #   probability = 1 / (1 + exp(steepness × (accumulated_risk − midpoint)))
-        #
-        # The sigmoid is forgiving at low accumulated risk (station gets generous
-        # probability well below the midpoint) and drops sharply past the midpoint.
-        # This is more realistic than linear: small accumulated risk barely penalizes
-        # the station; sustained hot streaks trigger a stronger pullback.
-        #
-        # The curve is asymptotic — never exactly 0 or 1 — so there is always some
-        # chance of broadcasting (or not), which is the intended behavior.
-        midpoint   = self._risk_config.sigmoid_midpoint
-        steepness  = self._risk_config.sigmoid_steepness
+        self._run_todays_decision(now, accumulated_risk)
+
+    def reroll(self) -> None:
+        """Re-run today's broadcast decision without touching accumulated risk.
+
+        Re-rolls the go/no-go dice and picks new random times, using the same
+        accumulated_risk that was already computed and saved for today. Useful
+        when the operator wants another shot at tonight's decision.
+
+        Accumulated_risk is not recalculated — the EMA was already updated when
+        the original decision was made and should not be applied again.
+        """
+        state = self._load_state()
+        accumulated_risk = state.get("accumulated_risk", 0.0)
+        self._logger.info(
+            f"Daily decision reroll [manual] — accumulated_risk={accumulated_risk:.3f}"
+        )
+        self._run_todays_decision(datetime.now(), accumulated_risk)
+
+    def _run_todays_decision(self, now: datetime, accumulated_risk: float) -> None:
+        """Roll the go/no-go dice, pick times if broadcasting, persist, and notify.
+
+        Separated from the EMA update so reroll() can call it directly without
+        re-applying the accumulated risk calculation.
+
+        Broadcast probability follows a sigmoid curve:
+          probability = 1 / (1 + exp(steepness × (accumulated_risk − midpoint)))
+
+        The sigmoid is forgiving at low accumulated risk and drops sharply past the
+        midpoint. The curve is asymptotic — never exactly 0 or 1 — so there is always
+        some chance of broadcasting (or not), which is the intended behavior.
+
+        Args:
+            now: Current datetime, used to resolve today's window times.
+            accumulated_risk: EMA risk level to use for the probability roll.
+        """
+        today_str = now.strftime("%Y-%m-%d")
+        midpoint  = self._risk_config.sigmoid_midpoint
+        steepness = self._risk_config.sigmoid_steepness
         probability = 1.0 / (1.0 + math.exp(steepness * (accumulated_risk - midpoint)))
 
         roll = random.random()
@@ -321,6 +346,7 @@ class Scheduler:
                 self._notifier.send_no_broadcast_tonight(accumulated_risk)
 
         self._save_state({"accumulated_risk": accumulated_risk, "today": today_data})
+        self.wake()
 
     # ── Transmitter control ───────────────────────────────────────────────────
 

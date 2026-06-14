@@ -150,8 +150,16 @@ setInterval(updateRelayStatus, 120000);
 <!-- Tonight's broadcast -->
 <h2>Tonight's Broadcast</h2>
 <div class="card">
+  <!-- Reroll form must live outside the schedule form (no nested forms) -->
+  <form id="reroll-form" method="post" action="/api/reroll"></form>
   <form method="post" action="/api/schedule" onsubmit="return validateSchedule(this)">
     <div class="row">
+      <div class="field">
+        <label>&nbsp;</label>
+        <button type="submit" form="reroll-form" class="btn"
+                style="background:#1a1a4a;color:#88f;border:1px solid #446"
+                title="Re-run today's broadcast decision with a new random roll">↺ Reroll</button>
+      </div>
       <div class="field">
         <label>Broadcasting</label>
         <select name="broadcasting">
@@ -394,6 +402,12 @@ class ControlPanel:
                 f"Emergency shutoff {'ACTIVATED' if new_state else 'CLEARED'} via control panel"
             )
             self._scheduler.wake()
+            return redirect("/")
+
+        @app.route("/api/reroll", methods=["POST"])
+        def reroll():
+            self._logger.info("Tonight's broadcast decision rerolled via control panel")
+            self._scheduler.reroll()
             return redirect("/")
 
     # ── State I/O ─────────────────────────────────────────────────────────────
