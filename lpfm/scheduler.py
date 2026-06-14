@@ -281,11 +281,15 @@ class Scheduler:
         if broadcasting:
             today["start"] = start
             today["stop"] = stop
+            start_dt, stop_dt = self._parse_broadcast_window(today)
+            today["risk_score"] = self._calculate_risk(start_dt, stop_dt)
+        else:
+            today["risk_score"] = 0.0
         today["decided"] = True
         state["today"] = today
         self._logger.info(
             f"Schedule overridden via control panel [manual]: broadcasting={broadcasting}, "
-            f"start={start!r}, stop={stop!r}"
+            f"start={start!r}, stop={stop!r}, risk_score={today['risk_score']:.3f}"
         )
         self._save_state(state)
         self.wake()
