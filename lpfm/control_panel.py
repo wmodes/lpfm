@@ -30,10 +30,10 @@ TEMPLATE = """<!DOCTYPE html>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: monospace; background: #111; color: #ddd; padding: 24px; max-width: 860px; margin: 0 auto; }
   h1 { color: #f90; font-size: 1.4em; border-bottom: 1px solid #333; padding-bottom: 12px; margin-bottom: 24px; }
-  h2 { color: #888; font-size: 0.8em; text-transform: uppercase; letter-spacing: 3px; margin: 28px 0 10px; }
+  h2 { color: #aaa; font-size: 0.8em; text-transform: uppercase; letter-spacing: 3px; margin: 28px 0 10px; }
   .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; padding: 20px; }
   .card.danger { border-color: #600; }
-  label { color: #888; font-size: 0.8em; display: block; margin-bottom: 5px; }
+  label { color: #aaa; font-size: 0.8em; display: block; margin-bottom: 5px; }
   input[type=time], input[type=text], select {
     background: #222; border: 1px solid #444; color: #eee;
     padding: 7px 10px; border-radius: 3px; font-family: monospace; font-size: 0.95em;
@@ -52,14 +52,14 @@ TEMPLATE = """<!DOCTYPE html>
   .shutoff-banner { color: #f66; font-size: 0.85em; margin-top: 10px; }
   .manual-row { display: flex; align-items: center; flex-wrap: wrap; gap: 32px; }
   .status-wrap { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-  .status-label { color: #888; font-size: 0.9em; }
+  .status-label { color: #aaa; font-size: 0.9em; }
   .toggle-wrap { display: flex; align-items: center; gap: 10px; }
-  .toggle-label { color: #888; font-size: 0.85em; }
+  .toggle-label { color: #aaa; font-size: 0.85em; }
   .toggle-state { font-size: 0.85em; min-width: 2.5em; }
   .toggle-switch { position: relative; display: inline-block; width: 52px; height: 26px; }
   .toggle-switch input { opacity: 0; width: 0; height: 0; }
   .toggle-knob { position: absolute; cursor: pointer; inset: 0; background: #333; border-radius: 26px; transition: 0.25s; }
-  .toggle-knob:before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #666; border-radius: 50%; transition: 0.25s; }
+  .toggle-knob:before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #aaa; border-radius: 50%; transition: 0.25s; }
   input:checked + .toggle-knob { background: #1a5c1a; }
   input:checked + .toggle-knob:before { transform: translateX(26px); background: #8f8; }
   .shutoff-form { flex: 1; min-width: 160px; }
@@ -68,12 +68,12 @@ TEMPLATE = """<!DOCTYPE html>
   .risk-bar { background: #2a2a2a; height: 6px; border-radius: 3px; overflow: hidden; margin: 8px 0 4px; }
   .risk-fill { height: 100%; background: linear-gradient(to right, #2a2, #aa2, #a22); transition: width 0.3s; }
   .risk-value { font-size: 1.6em; color: #f90; }
-  .prob { color: #888; font-size: 0.85em; }
+  .prob { color: #aaa; font-size: 0.85em; }
   table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-  th { text-align: left; color: #666; font-weight: normal; padding: 6px 10px 8px; border-bottom: 1px solid #2a2a2a; }
+  th { text-align: left; color: #aaa; font-weight: normal; padding: 6px 10px 8px; border-bottom: 1px solid #2a2a2a; }
   td { padding: 7px 10px; border-bottom: 1px solid #1e1e1e; }
   .on-air { color: #6f6; }
-  .off-air { color: #888; }
+  .off-air { color: #aaa; }
   .separator { margin: 6px 0; }
 </style>
 </head>
@@ -196,7 +196,7 @@ setInterval(updateRelayStatus, 120000);
       </div>
       <div class="field">
         <label>&nbsp;</label>
-        <button type="button" class="btn" style="background:#222;color:#888;border:1px solid #444"
+        <button type="button" class="btn" style="background:#222;color:#aaa;border:1px solid #444"
                 onclick="document.getElementById('stream-url').value='{{ default_stream }}'"
                 title="Restore default stream URL">Reset</button>
       </div>
