@@ -73,7 +73,7 @@ TEMPLATE = """<!DOCTYPE html>
   th { text-align: left; color: #666; font-weight: normal; padding: 6px 10px 8px; border-bottom: 1px solid #2a2a2a; }
   td { padding: 7px 10px; border-bottom: 1px solid #1e1e1e; }
   .on-air { color: #6f6; }
-  .off-air { color: #555; }
+  .off-air { color: #888; }
   .separator { margin: 6px 0; }
 </style>
 </head>
