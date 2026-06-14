@@ -267,6 +267,29 @@ class Scheduler:
 
         self._run_todays_decision(now, accumulated_risk)
 
+    def set_schedule(self, broadcasting: bool, start: str, stop: str) -> None:
+        """Override tonight's schedule from the control panel and persist to history.
+
+        Args:
+            broadcasting: Whether to broadcast tonight.
+            start: Start time string in "HH:MM" format (ignored if not broadcasting).
+            stop: Stop time string in "HH:MM" format (ignored if not broadcasting).
+        """
+        state = self._load_state()
+        today = state.get("today", {})
+        today["broadcasting"] = broadcasting
+        if broadcasting:
+            today["start"] = start
+            today["stop"] = stop
+        today["decided"] = True
+        state["today"] = today
+        self._logger.info(
+            f"Schedule overridden via control panel [manual]: broadcasting={broadcasting}, "
+            f"start={start!r}, stop={stop!r}"
+        )
+        self._save_state(state)
+        self.wake()
+
     def reroll(self) -> None:
         """Re-run today's broadcast decision without touching accumulated risk.
 

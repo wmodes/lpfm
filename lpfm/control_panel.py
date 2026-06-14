@@ -341,18 +341,10 @@ class ControlPanel:
 
         @app.route("/api/schedule", methods=["POST"])
         def update_schedule():
-            state = self._load_state()
-            today = state.get("today", {})
-            today["broadcasting"] = request.form.get("broadcasting") == "true"
-            today["start"] = request.form.get("start", today.get("start", ""))
-            today["stop"] = request.form.get("stop", today.get("stop", ""))
-            state["today"] = today
-            self._write_state(state)
-            self._logger.info(
-                f"Schedule updated via control panel: broadcasting={today['broadcasting']}, "
-                f"start={today['start']!r}, stop={today['stop']!r}"
-            )
-            self._scheduler.wake()
+            broadcasting = request.form.get("broadcasting") == "true"
+            start = request.form.get("start", "")
+            stop = request.form.get("stop", "")
+            self._scheduler.set_schedule(broadcasting, start, stop)
             return redirect("/")
 
         @app.route("/api/stream", methods=["POST"])
