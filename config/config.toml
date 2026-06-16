@@ -75,7 +75,7 @@ enabled = true
 
 [watchdog]
 poll_interval_seconds = 10      # how often to check stream health
-restart_attempts = 5            # consecutive failures before declaring stream dead
+restart_attempts = 1440         # max restart attempts before giving up (1440 × 30s = 12h)
 restart_cooldown_seconds = 30   # wait between restart attempts
 
 [fallback]

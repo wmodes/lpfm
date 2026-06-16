@@ -42,7 +42,7 @@ def main() -> None:
     fallback = FallbackPlayer(config.fallback, config.audio)
     stream = StreamFetcher(config.stream, config.audio)
     scheduler = Scheduler(config.scheduler, config.risk, relay, stream, notifier)
-    watchdog = Watchdog(config.watchdog, stream, relay, fallback, scheduler)
+    watchdog = Watchdog(config.watchdog, stream, fallback, scheduler)
     control_panel = ControlPanel(config.control_panel, config.scheduler, config.stream, scheduler, stream, relay)
 
     def shutdown(signum, frame):

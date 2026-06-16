@@ -1,14 +1,14 @@
 """Watchdog — monitors stream health and triggers recovery or fallback on failure.
 
 Polls the stream fetcher on a fixed interval. On failure it attempts to restart
-the stream, backing off between attempts. If restarts are exhausted it declares
-the stream dead, cuts the transmitter, and activates the fallback player. It
-continues polling in the background and restores normal operation when the
-stream recovers.
+the stream, backing off between attempts. After the first failed restart it
+activates the fallback player so the transmitter keeps broadcasting something.
+The scheduler owns the transmitter — the watchdog never touches the relay.
+Continues polling and restores normal operation when the stream recovers.
 
 FallbackPlayer and Scheduler are optional at construction — if not provided,
-fallback audio and broadcast-window checks are skipped. This allows the watchdog
-to be used before those components are implemented.
+fallback audio is skipped. This allows the watchdog to be used before those
+components are implemented.
 """
 
 import logging
@@ -17,37 +17,34 @@ import time
 
 from lpfm.config_loader import WatchdogConfig
 from lpfm.stream_fetcher import StreamFetcher, StreamFetcherError
-from lpfm.relay_controller import RelayController, RelayError
 
 
 class Watchdog:
     """Monitors the stream fetcher and coordinates recovery on failure.
 
     Runs a background polling thread that checks whether the stream fetcher
-    is alive. On failure it attempts restarts with a cooldown between each.
-    After restart_attempts consecutive failures it declares the stream dead,
-    cuts the transmitter, and starts the fallback player. Restores normal
-    operation when the stream recovers.
+    is alive and audio is flowing. On failure it attempts restarts with a
+    cooldown between each. After the first failed restart it activates the
+    fallback player so the transmitter keeps broadcasting something while
+    recovery is attempted. The scheduler manages the transmitter — the watchdog
+    never cuts or restores relay power.
 
     Args:
         watchdog_config: Polling and retry parameters from config.
         stream_fetcher: The StreamFetcher instance to monitor and restart.
-        relay_controller: The RelayController used to cut/restore transmitter power.
         fallback_player: Optional FallbackPlayer to activate during stream failure.
-        scheduler: Optional Scheduler used to check broadcast windows on recovery.
+        scheduler: Optional Scheduler — reserved for future use.
     """
 
     def __init__(
         self,
         watchdog_config: WatchdogConfig,
         stream_fetcher: StreamFetcher,
-        relay_controller: RelayController,
         fallback_player=None,
         scheduler=None,
     ):
         self._config = watchdog_config
         self._stream_fetcher = stream_fetcher
-        self._relay_controller = relay_controller
         self._fallback_player = fallback_player
         self._scheduler = scheduler
         self._logger = logging.getLogger(__name__)
@@ -162,30 +159,12 @@ class Watchdog:
 
     def _recover(self) -> None:
         """Restore normal operation after the stream recovers from failure."""
-        self._logger.info("Stream recovered — restoring normal operation")
+        self._logger.info("Stream recovered — stopping fallback, resuming normal operation")
         self._in_fallback = False
         self._consecutive_failures = 0
 
         if self._fallback_player:
             self._fallback_player.stop()
-
-        # Only restore the transmitter if inside the broadcast window and shutoff is not active
-        in_window = self._scheduler.is_in_broadcast_window() if self._scheduler else True
-        shutoff = self._scheduler.is_emergency_shutoff() if self._scheduler else False
-        self._logger.info(
-            f"Stream recovery: in_window={in_window}, emergency_shutoff={shutoff}"
-        )
-        if in_window and not shutoff:
-            try:
-                self._relay_controller.turn_on()
-                self._logger.info("Transmitter restored after stream recovery [watchdog]")
-            except RelayError as e:
-                self._logger.error(f"Failed to restore transmitter after recovery: {e}")
-        else:
-            self._logger.info(
-                "Transmitter not restored after recovery "
-                f"({'outside window' if not in_window else 'emergency shutoff active'})"
-            )
 
     # ── Unhealthy path ────────────────────────────────────────────────────────
 
@@ -217,18 +196,17 @@ class Watchdog:
         except StreamFetcherError as e:
             self._logger.error(f"Restart attempt {self._consecutive_failures} failed: {e}")
 
+        # After first failed restart, activate fallback so the transmitter keeps broadcasting
+        if self._consecutive_failures == 1 and not self._in_fallback:
+            self._logger.warning("Stream restart failed — activating fallback player")
+            self._in_fallback = True
+            if self._fallback_player:
+                self._fallback_player.start()
+
     def _declare_stream_dead(self) -> None:
-        """Cut the transmitter and activate fallback after all restarts failed."""
+        """Log a critical error after all restart attempts are exhausted."""
+        hours = (self._config.restart_attempts * self._config.restart_cooldown_seconds) / 3600
         self._logger.error(
-            f"Stream failed after {self._config.restart_attempts} restart attempts — "
-            "cutting transmitter, activating fallback"
+            f"Stream failed after {self._config.restart_attempts} restart attempts "
+            f"({hours:.0f}h) — giving up"
         )
-        self._in_fallback = True
-
-        try:
-            self._relay_controller.turn_off()
-        except RelayError as e:
-            self._logger.error(f"Failed to cut transmitter during stream failure: {e}")
-
-        if self._fallback_player:
-            self._fallback_player.start()
