@@ -136,6 +136,8 @@ class StreamFetcher:
                 self.stop()
                 self.start()
 
+    PROGRESS_FILE = "/tmp/ffmpeg_progress"
+
     def _build_command(self) -> list:
         """Construct the ffmpeg command from current config."""
         return [
@@ -144,6 +146,7 @@ class StreamFetcher:
             "-reconnect", "1",             # reconnect on disconnect
             "-reconnect_streamed", "1",    # reconnect on streamed sources
             "-reconnect_delay_max", str(self._stream_config.retry_delay_seconds),
+            "-progress", self.PROGRESS_FILE,  # periodic stats for health monitoring
             "-i", self._url_override or self._stream_config.url,
             "-vn",                         # discard any video stream
             "-acodec", "pcm_s16le",        # decode to raw 16-bit PCM for ALSA
