@@ -262,15 +262,15 @@ The state directory is gitignored. Back it up if risk history matters to you.
 
 For anyone building their own LPFM station. Prices are approximate and vary by supplier.
 
-| Part | Description | Price Range |
-|------|-------------|-------------|
-| Raspberry Pi 3B+ or 4 | Single-board computer running the station software | $35–$80 |
-| USB audio dongle | USB Class Audio device; provides a stereo headphone output to feed the transmitter | $8–$20 |
-| Low-power FM transmitter, Part 15 FCC certified | Broadcast-band transmitter with 3.5mm or RCA audio input and a coaxial antenna port; 1–7W typical | $50–$150 |
-| 1/4 wave ground plane FM antenna | Outdoor omnidirectional antenna tuned to 88–108 MHz, with 20–30ft of coaxial cable included | $40–$80 |
-| Coaxial connector adapter | TNC-to-BNC or BNC-to-BNC as needed to mate the antenna cable to the transmitter's antenna port | $5–$15 |
-| Wi-Fi smart relay | Single-channel relay with an HTTP/RPC API for remote power control; controls transmitter power | $15–$25 |
-| 3.5mm stereo patch cable | Connects USB dongle headphone out to transmitter audio in | $5–$10 |
+| Part | Description | Approx. Price |
+|------|-------------|---------------|
+| Raspberry Pi 3B+ (or newer) | Runs the station software | $35–$80 |
+| USB audio dongle | Stereo audio output to the transmitter; any USB Class Audio device works | $8–$20 |
+| Short-range FM transmitter, Part 15 FCC certified | Drives your licensed LPFM frequency | $50–$150 |
+| 1/4 wave ground plane FM antenna | Outdoor antenna, 88–108 MHz, with coaxial cable | $40–$80 |
+| Coaxial adapter | Match antenna cable connector (TNC/BNC) to transmitter antenna port | $5–$15 |
+| Wi-Fi smart relay (e.g. Shelly 1 Mini) | Single-channel relay with HTTP API for remote power control | $15–$25 |
+| 3.5mm stereo audio cable | USB dongle headphone out → transmitter audio in | $5–$10 |
 
 **Total: roughly $160–$380**, depending on transmitter power and whether you already have a Pi.
 
