@@ -14,6 +14,7 @@ import logging
 import shutil
 import subprocess
 import threading
+from pathlib import Path
 
 from lpfm.config_loader import AudioConfig, StreamConfig
 
@@ -104,10 +105,36 @@ class StreamFetcher:
 
         self._process = None
         self._stopping = False
+        # Remove progress file so stale data isn't read after a restart
+        try:
+            Path(self.PROGRESS_FILE).unlink(missing_ok=True)
+        except OSError:
+            pass
 
     def is_running(self) -> bool:
         """Return True if the ffmpeg subprocess is currently alive."""
         return self._process is not None and self._process.poll() is None
+
+    def read_progress(self) -> dict:
+        """Parse the ffmpeg progress file and return its fields as a dict.
+
+        ffmpeg writes key=value lines to PROGRESS_FILE approximately once per
+        second. Returns an empty dict if the file is absent or unreadable —
+        callers should treat that as an unknown (not failed) state.
+
+        Returns:
+            Dict with keys like 'out_time_us', 'speed', 'progress', etc.
+        """
+        try:
+            content = Path(self.PROGRESS_FILE).read_text()
+            result = {}
+            for line in content.strip().split('\n'):
+                if '=' in line:
+                    key, _, value = line.partition('=')
+                    result[key.strip()] = value.strip()
+            return result
+        except OSError:
+            return {}
 
     def restart(self) -> None:
         """Stop and restart the ffmpeg subprocess."""

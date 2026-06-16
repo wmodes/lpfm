@@ -60,6 +60,10 @@ class Watchdog:
         self._in_fallback = False
         self._last_restart_attempt = 0.0   # monotonic timestamp
 
+        # Audio stall tracking — detects ffmpeg alive but not outputting audio
+        self._last_out_time_us = None      # out_time_us from previous poll
+        self._audio_stall_polls = 0        # consecutive polls with no advancement
+
     def start(self) -> None:
         """Start the background polling thread."""
         if self._poll_thread and self._poll_thread.is_alive():
@@ -111,9 +115,50 @@ class Watchdog:
         if self._in_fallback:
             # Stream came back after a failure — begin recovery
             self._recover()
+            return
+
+        # Normal healthy state, reset failure counter
+        self._consecutive_failures = 0
+        self._check_audio_progress()
+
+    def _check_audio_progress(self) -> None:
+        """Detect audio stalls: ffmpeg alive but out_time_us not advancing.
+
+        Reads the ffmpeg progress file and compares out_time_us to the previous
+        poll. Two consecutive polls with no advancement trigger a WARNING and
+        force a restart via the normal unhealthy path.
+        """
+        progress = self._stream_fetcher.read_progress()
+        if not progress:
+            return  # File not yet written after startup — assume OK
+
+        try:
+            out_time_us = int(progress.get('out_time_us', 0))
+        except ValueError:
+            return
+
+        if out_time_us == 0:
+            return  # ffmpeg just started, hasn't produced output yet
+
+        prev = self._last_out_time_us
+
+        if prev is not None and out_time_us <= prev:
+            # out_time_us unchanged or went backwards (stall or restart mid-poll)
+            self._audio_stall_polls += 1
+            if self._audio_stall_polls >= 2:
+                self._logger.warning(
+                    f"Audio stall detected after {self._audio_stall_polls} polls: "
+                    f"out_time_us={out_time_us} (unchanged from {prev}), "
+                    f"speed={progress.get('speed', '?')}, "
+                    f"progress={progress.get('progress', '?')} — forcing restart"
+                )
+                self._last_out_time_us = None
+                self._audio_stall_polls = 0
+                self._handle_unhealthy_stream()
         else:
-            # Normal healthy state, reset failure counter
-            self._consecutive_failures = 0
+            # Audio is flowing normally
+            self._audio_stall_polls = 0
+            self._last_out_time_us = out_time_us
 
     def _recover(self) -> None:
         """Restore normal operation after the stream recovers from failure."""
@@ -168,7 +213,7 @@ class Watchdog:
             f"{self._consecutive_failures}/{self._config.restart_attempts}"
         )
         try:
-            self._stream_fetcher.start()
+            self._stream_fetcher.restart()
         except StreamFetcherError as e:
             self._logger.error(f"Restart attempt {self._consecutive_failures} failed: {e}")
 
