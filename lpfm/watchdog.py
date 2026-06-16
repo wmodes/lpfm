@@ -159,12 +159,17 @@ class Watchdog:
 
     def _recover(self) -> None:
         """Restore normal operation after the stream recovers from failure."""
-        self._logger.info("Stream recovered — stopping fallback, resuming normal operation")
+        attempts = self._consecutive_failures
         self._in_fallback = False
         self._consecutive_failures = 0
 
         if self._fallback_player:
             self._fallback_player.stop()
+
+        self._logger.info(
+            f"Stream recovered after {attempts} restart attempt{'s' if attempts != 1 else ''} "
+            "— stopping fallback, resuming normal operation"
+        )
 
     # ── Unhealthy path ────────────────────────────────────────────────────────
 
@@ -187,17 +192,18 @@ class Watchdog:
         # Attempt a restart
         self._consecutive_failures += 1
         self._last_restart_attempt = now
-        self._logger.warning(
-            f"Stream not running — restart attempt "
-            f"{self._consecutive_failures}/{self._config.restart_attempts}"
-        )
+        n = self._consecutive_failures
+        if n <= 5 or n % 10 == 0:
+            self._logger.warning(
+                f"Stream not running — restart attempt {n}/{self._config.restart_attempts}"
+            )
         try:
             self._stream_fetcher.restart()
         except StreamFetcherError as e:
-            self._logger.error(f"Restart attempt {self._consecutive_failures} failed: {e}")
+            self._logger.error(f"Restart attempt {n} failed: {e}")
 
         # After first failed restart, activate fallback so the transmitter keeps broadcasting
-        if self._consecutive_failures == 1 and not self._in_fallback:
+        if n == 1 and not self._in_fallback:
             self._logger.warning("Stream restart failed — activating fallback player")
             self._in_fallback = True
             if self._fallback_player:
