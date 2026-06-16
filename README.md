@@ -260,16 +260,6 @@ The state directory is gitignored. Back it up if risk history matters to you.
 
 ## Hardware
 
-- **Raspberry Pi 3B+** — runs the station software
-- **USB audio dongle** — audio output to FM transmitter input
-- **FM transmitter** — broadcasts on your licensed LPFM frequency
-- **Shelly 1 Mini Gen4** — wifi relay controlling transmitter power
-- **1/4 wave ground plane FM antenna** — outdoor antenna for extended range
-
----
-
-## Parts List
-
 For anyone building their own LPFM station. Prices are approximate and vary by supplier.
 
 | Part | Description | Price Range |
