@@ -222,6 +222,9 @@ class Scheduler:
             # On air
             if not self._is_transmitting:
                 self._activate_transmitter()
+                if not self._is_transmitting:
+                    # Relay activation failed — retry independently of stream state
+                    return min(30, (stop_dt - now).total_seconds())
             return (stop_dt - now).total_seconds()
 
         # Broadcast window has passed

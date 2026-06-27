@@ -171,6 +171,11 @@ class Watchdog:
             "— stopping fallback, resuming normal operation"
         )
 
+        # Wake the scheduler so it can immediately retry transmitter activation
+        # if the relay command failed earlier (e.g. DNS not ready at boot).
+        if self._scheduler:
+            self._scheduler.wake()
+
     # ── Unhealthy path ────────────────────────────────────────────────────────
 
     def _handle_unhealthy_stream(self) -> None:

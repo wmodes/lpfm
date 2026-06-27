@@ -206,7 +206,7 @@ setInterval(updateRelayStatus, 120000);
                 title="Restore default stream URL">Reset</button>
       </div>
     </div>
-    <p style="color:#555;font-size:0.75em;margin-top:6px">
+    <p style="color:#aaa;font-size:0.75em;margin-top:6px">
       HTTP/HTTPS direct stream only (Icecast, SHOUTcast) — not .m3u/.pls playlists
     </p>
   </form>
